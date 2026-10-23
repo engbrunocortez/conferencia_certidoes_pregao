@@ -1,0 +1,976 @@
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Conferência de Certidões</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: mesa de conferência — coluna de entrada (edital, fornecedor, documentos) à esquerda; parecer com carimbo à direita */
+:root{
+  --bg:#eef1f4; --panel:#ffffff; --ink:#17212e; --muted:#5b6778; --line:#d5dbe3; --soft:#f5f7f9;
+  --accent:#1f4e79; --accent-soft:#e3ecf5;
+  --ok:#1d6b45; --ok-soft:#e1f1e8; --warn:#8a5a00; --warn-soft:#fbf0d9; --bad:#a3271f; --bad-soft:#f9e3e1; --info:#4a5568;
+  --f-display:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"Cascadia Mono",Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#11161d; --panel:#19212b; --ink:#e4e9ef; --muted:#97a3b3; --line:#2c3744; --soft:#1e2833;
+  --accent:#7fb2e5; --accent-soft:#1d3349;
+  --ok:#6ccf9a; --ok-soft:#173527; --warn:#f0c062; --warn-soft:#3a2d12; --bad:#f08a80; --bad-soft:#3d1c1a; --info:#a8b3c2; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#11161d; --panel:#19212b; --ink:#e4e9ef; --muted:#97a3b3; --line:#2c3744; --soft:#1e2833;
+  --accent:#7fb2e5; --accent-soft:#1d3349;
+  --ok:#6ccf9a; --ok-soft:#173527; --warn:#f0c062; --warn-soft:#3a2d12; --bad:#f08a80; --bad-soft:#3d1c1a; --info:#a8b3c2; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);}
+.wrap{max-width:1320px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px 24px;padding-bottom:16px;border-bottom:2px solid var(--ink);margin-bottom:20px}
+.brand h1{font:700 30px/1.1 var(--f-display);letter-spacing:.01em;margin:0;text-wrap:balance}
+.brand p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.proc{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:13px}
+.proc div{display:flex;flex-direction:column}
+.proc span{font:600 11px/1.2 var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.proc b{font:500 14px/1.4 var(--f-mono)}
+.grid{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:minmax(0,1fr)}}
+.col{display:flex;flex-direction:column;gap:16px;min-width:0}
+section.card{background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:16px;min-width:0}
+.card h2{font:600 18px/1.2 var(--f-display);margin:0 0 4px;display:flex;align-items:baseline;gap:8px}
+.card h2 .n{font:500 12px var(--f-mono);color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:0 5px}
+.card .sub{color:var(--muted);font-size:13px;margin:0 0 12px}
+.drop{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:1.5px dashed var(--line);border-radius:6px;padding:18px 12px;text-align:center;cursor:pointer;background:var(--soft);transition:border-color .15s,background .15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.drop strong{font-weight:600}
+.drop small{color:var(--muted)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.busy{font-size:13px;color:var(--accent);margin-top:8px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+input[type=text],input[type=date],input[type=number],select,textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:7px 9px;width:100%;text-transform:none;letter-spacing:0;font-weight:400}
+input.mono{font-family:var(--f-mono)}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stack{display:flex;flex-direction:column;gap:10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{flex:1;border:0;background:var(--panel);color:var(--ink);font:500 13px var(--f-body);padding:7px 6px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--panel)}
+.hint{font-size:12px;color:var(--muted);margin:2px 0 0}
+.reqs{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+.reqs li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.reqs li:first-child{border-top:0}
+.reqs input[type=checkbox]{margin-top:3px;width:16px;height:16px;accent-color:var(--accent)}
+.reqs .nm{font-weight:500}
+.reqs .nt{font-size:12px;color:var(--warn)}
+.reqs details{font-size:12px;color:var(--muted)}
+.reqs summary{cursor:pointer;color:var(--accent)}
+.reqs blockquote{margin:4px 0 0;padding:6px 8px;background:var(--soft);border-left:2px solid var(--line);font:12px/1.45 var(--f-mono);white-space:normal;overflow-wrap:anywhere}
+.item{font:500 12px var(--f-mono);color:var(--muted);white-space:nowrap}
+.docs{display:flex;flex-direction:column;gap:6px}
+.doc{border:1px solid var(--line);border-radius:4px;padding:8px 10px;display:grid;grid-template-columns:minmax(0,1fr) 170px;gap:6px 10px;align-items:center;background:var(--panel)}
+.doc .fn{font-size:13px;font-weight:500;overflow-wrap:anywhere}
+.doc .meta{grid-column:1/-1;font:12px/1.4 var(--f-mono);color:var(--muted);display:flex;flex-wrap:wrap;gap:2px 12px}
+.doc select{font-size:12px;padding:4px 6px}
+.doc.unk{background:var(--soft)}
+.doc .vin{display:flex;align-items:center;gap:6px;grid-column:1/-1;font-size:12px;color:var(--muted)}
+.doc .vin input{width:auto;padding:3px 6px;font-size:12px}
+.tag{display:inline-block;font:600 10.5px/1.6 var(--f-body);letter-spacing:.06em;text-transform:uppercase;padding:0 6px;border-radius:3px;background:var(--soft);color:var(--muted);border:1px solid var(--line)}
+/* parecer */
+.verdict{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:center}
+.verdict .sum{display:flex;flex-wrap:wrap;gap:8px 20px}
+.verdict .sum div{display:flex;flex-direction:column}
+.verdict .sum b{font:600 26px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.verdict .sum span{font-size:12px;color:var(--muted);letter-spacing:.05em;text-transform:uppercase}
+.stamp{font:700 15px/1.15 var(--f-display);letter-spacing:.12em;text-transform:uppercase;text-align:center;padding:10px 16px;border:3px double currentColor;border-radius:6px;transform:rotate(-4deg);max-width:220px}
+.stamp.ok{color:var(--ok)} .stamp.bad{color:var(--bad)} .stamp.warn{color:var(--warn)}
+.stamp small{display:block;font:500 11px/1.3 var(--f-mono);letter-spacing:.02em;text-transform:none;margin-top:4px}
+.example{display:flex;gap:10px;align-items:center;background:var(--warn-soft);color:var(--warn);border-radius:4px;padding:8px 12px;font-size:13px;margin-bottom:12px}
+.tbl{overflow-x:auto;margin-top:14px;border:1px solid var(--line);border-radius:6px}
+table{width:100%;border-collapse:collapse;font-size:13.5px;min-width:760px}
+th{font:600 11px var(--f-body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted);text-align:left;padding:8px 10px;background:var(--soft);border-bottom:1px solid var(--line)}
+td{padding:10px;border-top:1px solid var(--line);vertical-align:top}
+tr:first-child td{border-top:0}
+td.mono{font-family:var(--f-mono);font-size:12.5px;font-variant-numeric:tabular-nums;white-space:nowrap}
+td .cert{font-weight:600}
+td .file{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+td ul{margin:4px 0 0;padding-left:16px;font-size:12.5px}
+td li.p{color:var(--bad)} td li.a{color:var(--warn)} td li.i{color:var(--info)}
+.pill{display:inline-flex;align-items:center;gap:5px;font:600 12px/1 var(--f-body);padding:5px 8px;border-radius:999px;white-space:nowrap}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.s-ok{background:var(--ok-soft);color:var(--ok)} .s-atencao{background:var(--warn-soft);color:var(--warn)}
+.s-vencida,.s-erro,.s-faltando{background:var(--bad-soft);color:var(--bad)} .s-sicaf{background:var(--accent-soft);color:var(--accent)}
+tr.st-faltando td,tr.st-vencida td,tr.st-erro td{box-shadow:inset 3px 0 0 0 transparent}
+tr.st-faltando td:first-child,tr.st-vencida td:first-child,tr.st-erro td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+tr.st-atencao td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+td select{font-size:12px;padding:4px 6px;min-width:150px}
+td a{color:var(--accent)}
+.extras{margin-top:14px;font-size:13px;color:var(--muted)}
+.extras ul{margin:4px 0 0;padding-left:18px}
+.msg textarea{min-height:300px;font:13.5px/1.55 var(--f-body);resize:vertical}
+.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;align-items:center}
+button.b,label.b{font:600 13px var(--f-body);border:1px solid var(--accent);background:var(--accent);color:var(--panel);border-radius:4px;padding:8px 14px;cursor:pointer}
+button.b.ghost,label.b.ghost{background:transparent;color:var(--accent)}
+button.b:hover,label.b:hover{filter:brightness(1.08)}
+.toast{font-size:13px;color:var(--ok)}
+.none{color:var(--muted);font-size:13px;padding:6px 0}
+footer{margin-top:28px;font-size:12px;color:var(--muted);max-width:75ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <h1>Conferência de Certidões</h1>
+      <p>Habilitação fiscal, social e trabalhista · Lei nº 14.133/2021</p>
+    </div>
+    <div class="proc" id="proc"></div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="card">
+        <h2><span class="n">1</span>Edital</h2>
+        <p class="sub">O sistema localiza as certidões exigidas na seção de habilitação. Confira a lista antes de seguir.</p>
+        <label class="drop" id="dropEdital">
+          <input type="file" id="fileEdital" accept="application/pdf,.pdf">
+          <strong>Enviar o edital (PDF)</strong>
+          <small>ou arraste o arquivo para cá</small>
+        </label>
+        <div class="busy" id="busyEdital" hidden></div>
+        <ul class="reqs" id="reqs" style="margin-top:12px"></ul>
+      </section>
+
+      <section class="card">
+        <h2><span class="n">2</span>Fornecedor e data de referência</h2>
+        <p class="sub">O CNPJ é preenchido a partir das certidões, se estiver em branco.</p>
+        <div class="stack">
+          <label class="f" for="razao">Razão social<input type="text" id="razao" autocomplete="off"></label>
+          <label class="f" for="cnpj">CNPJ do fornecedor<input type="text" id="cnpj" class="mono" placeholder="00.000.000/0000-00" autocomplete="off"></label>
+          <div class="hint" id="cnpjHint"></div>
+          <div class="f" style="gap:6px">Validade conferida em
+            <div class="seg" role="group" aria-label="Data de referência">
+              <button type="button" data-ref="sessao" id="refSessao">Data da sessão</button>
+              <button type="button" data-ref="hoje">Hoje</button>
+              <button type="button" data-ref="custom">Outra data</button>
+            </div>
+          </div>
+          <input type="date" id="refCustom" hidden>
+          <label class="f" for="padrao">Validade presumida de certidões sem prazo impresso (dias)<input type="number" id="padrao" min="1" max="365" value="90"></label>
+          <p class="hint">Vale para certidões como a de falência do TJSP, que não trazem data de validade. Use o prazo que o edital ou o seu setor adota.</p>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2><span class="n">3</span>Documentos da empresa</h2>
+        <p class="sub">Envie todos os PDFs de uma vez. Atestados, balanços e outros documentos são separados automaticamente.</p>
+        <label class="drop" id="dropDocs">
+          <input type="file" id="fileDocs" accept="application/pdf,.pdf,image/*" multiple>
+          <strong>Enviar certidões (PDF ou imagem)</strong>
+          <small>vários arquivos ou uma pasta, arrastando para cá</small>
+        </label>
+        <div class="btns" style="margin-top:8px"><label class="b ghost" for="fileDir" style="display:inline-block">Selecionar pasta inteira</label>
+          <input type="file" id="fileDir" webkitdirectory multiple hidden>
+          <button type="button" class="b ghost" id="clearDocs">Limpar documentos</button></div>
+        <p class="hint">A pasta pode conter o edital: ele é reconhecido e usado na etapa 1. Não há limite de arquivos; PDFs digitalizados levam alguns segundos por página.</p>
+        <div class="busy" id="busyDocs" hidden></div>
+        <div class="docs" id="docs" style="margin-top:12px"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card">
+        <div id="exampleBar" class="example">Exemplo com dados fictícios. Envie o edital e as certidões para fazer a sua conferência.</div>
+        <div class="verdict">
+          <div>
+            <h2 style="margin-bottom:10px">Parecer da conferência</h2>
+            <div class="sum" id="sum"></div>
+          </div>
+          <div class="stamp" id="stamp"></div>
+        </div>
+        <div class="tbl"><table>
+          <thead><tr><th>Situação</th><th>Certidão exigida</th><th>CNPJ</th><th>Emissão</th><th>Validade</th><th>Ajuste manual</th></tr></thead>
+          <tbody id="tbody"></tbody>
+        </table></div>
+        <div class="extras" id="extras"></div>
+      </section>
+
+      <section class="card msg">
+        <h2>Mensagem à empresa</h2>
+        <p class="sub" id="msgSub">Texto gerado com as pendências. Revise antes de enviar.</p>
+        <div class="row2" style="margin-bottom:10px">
+          <label class="f" for="prazo">Prazo para envio<input type="text" id="prazo" value="2 (duas) horas"></label>
+          <label class="f" for="assin">Assinatura<input type="text" id="assin" value="Pregoeiro(a) – Seção de Compras e Materiais – EEL/USP"></label>
+        </div>
+        <textarea id="msg" aria-label="Mensagem à empresa"></textarea>
+        <div class="btns"><button type="button" class="b" id="copy">Copiar mensagem</button><span class="toast" id="toast" aria-live="polite"></span></div>
+      </section>
+    </div>
+  </div>
+
+  <footer>Os arquivos são lidos no seu navegador e não são enviados a nenhum servidor. PDFs digitalizados e fotos (JPG, PNG) passam por reconhecimento de texto (OCR) em português; os dados lidos assim ficam marcados para conferência. Se o OCR não identificar o documento, ele pode ser classificado manualmente. A autenticidade deve ser confirmada no site do órgão emissor; use os links da tabela.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+<script>
+// ===== Núcleo de reconhecimento (sem dependência de interface) =====
+const Core = (() => {
+  const MESES = {JANEIRO:1,FEVEREIRO:2,MARCO:3,ABRIL:4,MAIO:5,JUNHO:6,JULHO:7,AGOSTO:8,SETEMBRO:9,OUTUBRO:10,NOVEMBRO:11,DEZEMBRO:12};
+
+  function norm(s) {
+    return (s || '')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/[ﬁ]/g, 'fi').replace(/[ﬂ]/g, 'fl')
+      .replace(/[º°]/g, 'O')
+      .toUpperCase()
+      .replace(/[ \t ]+/g, ' ')
+      .replace(/\s*\n\s*/g, '\n');
+  }
+  const flat = s => s.replace(/\n/g, ' ');
+
+  // ---------- datas ----------
+  function mkDate(d, m, y) {
+    d = +d; m = +m; y = +y; if (y < 100) y += 2000;
+    if (!d || !m || m > 12 || d > 31) return null;
+    return new Date(Date.UTC(y, m - 1, d, 12));
+  }
+  function parseBR(s) { const m = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/.exec(s || ''); return m ? mkDate(m[1], m[2], m[3]) : null; }
+  function addDays(d, n) { return new Date(d.getTime() + n * 86400000); }
+  function addMonths(d, n) { const r = new Date(d); r.setUTCMonth(r.getUTCMonth() + n); return r; }
+  function fmt(d) { if (!d) return '—'; const p = n => String(n).padStart(2, '0'); return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`; }
+  function diffDays(a, b) { return Math.round((a - b) / 86400000); }
+  function today() { const t = new Date(); return new Date(Date.UTC(t.getFullYear(), t.getMonth(), t.getDate(), 12)); }
+  function extensoDate(T) {
+    const m = /(\d{1,2}) DE (JANEIRO|FEVEREIRO|MARCO|ABRIL|MAIO|JUNHO|JULHO|AGOSTO|SETEMBRO|OUTUBRO|NOVEMBRO|DEZEMBRO) DE (\d{4})/.exec(T);
+    return m ? mkDate(m[1], MESES[m[2]], m[3]) : null;
+  }
+  // validade relativa: "30 (TRINTA) DIAS", "6 (SEIS) MESES", "180 DIAS"
+  function relValidity(T) {
+    const m = /VALIDADE[:\s]*(\d{1,3})\s*(?:\([A-Z ]+\))?\s*(DIAS|MESES)/.exec(T)
+      || /(\d{1,3})\s*(?:\([A-Z ]+\))?\s*(DIAS|MESES),?\s*CONTAD/.exec(T);
+    return m ? { n: +m[1], unit: m[2] } : null;
+  }
+  function emissaoHora(T) { const m = /(\d{2}\/\d{2}\/\d{4})\s+(?:AS\s+)?\d{2}:\d{2}/.exec(T); return m ? parseBR(m[1]) : null; }
+  function applyRel(em, rel) { if (!em || !rel) return null; return rel.unit === 'DIAS' ? addDays(em, rel.n) : addMonths(em, rel.n); }
+
+  // ---------- CNPJ (numérico e alfanumérico, IN RFB 2.229/2024) ----------
+  const onlyCnpj = s => (s || '').toUpperCase().replace(/[^0-9A-Z]/g, '');
+  function cnpjValid(c) {
+    c = onlyCnpj(c);
+    if (!/^[0-9A-Z]{12}\d{2}$/.test(c) || /^(\d)\1{13}$/.test(c)) return false;
+    const v = ch => ch.charCodeAt(0) - 48;
+    const dv = len => {
+      const w = len === 12 ? [5,4,3,2,9,8,7,6,5,4,3,2] : [6,5,4,3,2,9,8,7,6,5,4,3,2];
+      let s = 0; for (let i = 0; i < len; i++) s += v(c[i]) * w[i];
+      const r = s % 11; return r < 2 ? 0 : 11 - r;
+    };
+    return dv(12) === +c[12] && dv(13) === +c[13];
+  }
+  function fmtCnpj(c) {
+    c = onlyCnpj(c);
+    if (c.length === 14) return `${c.slice(0,2)}.${c.slice(2,5)}.${c.slice(5,8)}/${c.slice(8,12)}-${c.slice(12)}`;
+    if (c.length === 8) return `${c.slice(0,2)}.${c.slice(2,5)}.${c.slice(5,8)}`;
+    return c;
+  }
+  function findCnpjs(T) {
+    const out = [];
+    const re = /\b([0-9A-Z]{2})\.?([0-9A-Z]{3})\.?([0-9A-Z]{3})\s?\/?\s?([0-9A-Z]{4})-?(\d{2})\b/g;
+    let m;
+    while ((m = re.exec(T))) {
+      const raw = m[0];
+      const c = m.slice(1).join('');
+      const punct = /[./-]/.test(raw);
+      if (!/^\d+$/.test(c) && !punct) continue;          // alfanumérico só com máscara
+      if (cnpjValid(c)) out.push(c);
+    }
+    return out;
+  }
+  function findRaiz(T) {
+    const m = /(?:RAIZ DO CNPJ|CNPJ BASE|CNPJ RAIZ|BASE DO CNPJ)[:\s]*([0-9A-Z]{2}\.?[0-9A-Z]{3}\.?[0-9A-Z]{3})/.exec(T);
+    return m ? onlyCnpj(m[1]) : null;
+  }
+
+  // ---------- catálogo ----------
+  // escopo: 'raiz' = certidão vale para a empresa toda (matriz e filiais); 'estab' = por estabelecimento
+  const CATALOG = [
+    { id: 'FED', nome: 'CND Federal (RFB/PGFN)', longo: 'Certidão de Débitos Relativos a Créditos Tributários Federais e à Dívida Ativa da União (RFB/PGFN)', escopo: 'raiz', validade: true,
+      edital: [/REGULARIDADE FISCAL PERANTE A FAZENDA NACIONAL/, /TRIBUTOS FEDERAIS E A DIVIDA ATIVA DA UNIAO/, /RECEITA FEDERAL DO BRASIL \(RFB\) E\s+PELA PROCURADORIA/, /REGULARIDADE (?:COM|PERANTE) A FAZENDA (?:FEDERAL|NACIONAL)/],
+      link: 'https://solucoes.receita.fazenda.gov.br/Servicos/certidaointernet/PJ/Consultar' },
+    { id: 'FGTS', nome: 'CRF — FGTS (Caixa)', longo: 'Certificado de Regularidade do FGTS (CRF)', escopo: 'estab', validade: true,
+      edital: [/REGULARIDADE (?:COM|PERANTE|RELATIVA AO|JUNTO AO) O? ?FUNDO DE GARANTIA/, /CERTIFICADO DE REGULARIDADE DO FGTS/, /REGULARIDADE (?:COM|PERANTE) O FGTS/],
+      link: 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf' },
+    { id: 'CNDT', nome: 'CNDT — Justiça do Trabalho', longo: 'Certidão Negativa de Débitos Trabalhistas (CNDT)', escopo: 'raiz', validade: true,
+      edital: [/INEXISTENCIA DE DEBITOS INADIMPLIDOS PERANTE A JUSTICA DO TRABALHO/, /CERTIDAO NEGATIVA DE DEBITOS TRABALHISTAS/, /\bCNDT\b/],
+      link: 'https://cndt-certidao.tst.jus.br/inicio.faces' },
+    { id: 'EST', nome: 'Fazenda Estadual — Dívida Ativa', longo: 'Certidão de regularidade com a Fazenda Estadual (débitos inscritos na Dívida Ativa)', escopo: 'raiz', validade: true,
+      edital: [/REGULARIDADE (?:COM|PERANTE|JUNTO A) A FAZENDA ESTADUAL/, /DEBITOS TRIBUTARIOS\s+INSCRITOS NA DIVIDA ATIVA/, /FAZENDA ESTADUAL/],
+      link: 'https://www.dividaativa.pge.sp.gov.br/sc/pages/crda/emitirCrda.jsf' },
+    { id: 'EST_NI', nome: 'Fazenda Estadual — Débitos não inscritos', longo: 'Certidão de débitos tributários não inscritos na Dívida Ativa (Secretaria da Fazenda)', escopo: 'estab', validade: true,
+      edital: [/NAO INSCRITOS NA DIVIDA ATIVA/],
+      link: 'https://www.dividaativa.pge.sp.gov.br/' },
+    { id: 'MUN', nome: 'Fazenda Municipal — Tributos Mobiliários', longo: 'Certidão de regularidade com a Fazenda Municipal (tributos mobiliários)', escopo: 'estab', validade: true,
+      edital: [/TRIBUTOS MOBILIARIOS/, /REGULARIDADE (?:COM|PERANTE|JUNTO A) A FAZENDA MUNICIPAL/, /FAZENDA MUNICIPAL/],
+      condicional: /CASO DE SERVICOS|PRESTACAO DE SERVICOS/, condNota: 'O edital exige a certidão municipal apenas no caso de serviços.' },
+    { id: 'FAL', nome: 'Falência e recuperação judicial', longo: 'Certidão negativa de falência, recuperação judicial ou extrajudicial', escopo: 'raiz', validade: true, presumida: true,
+      edital: [/CERTIDAO NEGATIVA DE FALENCIA/, /NEGATIVA DE (?:PEDIDOS? DE )?FALENCIA/, /FALENCIA,? (?:CONCORDATA|RECUPERACAO JUDICIAL)/],
+      link: 'https://esaj.tjsp.jus.br/sco/abrirCadastro.do' },
+    { id: 'CIV', nome: 'Insolvência civil / Distribuição cível', longo: 'Certidão negativa de insolvência civil (distribuição cível)', escopo: 'raiz', validade: true, presumida: true,
+      edital: [/INSOLVENCIA CIVIL/],
+      condicional: /PESSOA FISICA|SOCIEDADE SIMPLES/, condNota: 'O edital exige esta certidão apenas de pessoa física ou sociedade simples.' },
+    { id: 'CNPJ', nome: 'Comprovante de inscrição no CNPJ', longo: 'Prova de inscrição no Cadastro Nacional de Pessoas Jurídicas (CNPJ)', escopo: 'estab', validade: false,
+      edital: [/INSCRICAO NO CADASTRO NACIONAL (?:DE|DA) PESSOAS? JURIDICAS?/] },
+    { id: 'INSC', nome: 'Inscrição estadual ou municipal', longo: 'Prova de inscrição no cadastro de contribuintes estadual e/ou municipal', escopo: 'estab', validade: false,
+      edital: [/INSCRICAO NO CADASTRO DE CONTRIBUINTES/] },
+  ];
+  const byId = Object.fromEntries(CATALOG.map(c => [c.id, c]));
+
+  // ---------- leitura do edital ----------
+  function itemNumberBefore(T, idx) {
+    const win = T.slice(Math.max(0, idx - 500), idx + 3);
+    const re = /(?:^|\s)(\d{1,2}(?:\.\d{1,2}){1,3})\.?\s+(?=[A-Z])/g;
+    let m, last = null;
+    while ((m = re.exec(win))) last = m[1];
+    return last;
+  }
+  function parseEdital(raw) {
+    const T = flat(norm(raw));
+    const info = {};
+    let m;
+    if ((m = /PREGAO ELETRONICO N[O.]*\s*(\d+\s*\/\s*\d{4})/.exec(T))) info.pregao = m[1].replace(/\s/g, '');
+    if ((m = /PROCESSO(?: SEI)?(?: N[O.]*)?[\s:–-]*(\d{3}\.\d{5}\/\d{4}-\d{2})/.exec(T))) info.processo = m[1];
+    if ((m = /DATA DA SESSAO PUBLICA\s*(?:DIA\s*)?(\d{1,2}\/\d{1,2}\/\d{4})/.exec(T))) info.sessao = parseBR(m[1]);
+    if ((m = /OBJETO\s+(.{10,160}?)\s+(?:VALOR|DATA|1\.)/.exec(T))) info.objeto = m[1].trim();
+    if ((m = /NO PRAZO DE (DUAS|DUAS \(2\)|\d+ \(?[A-Z]*\)?) HORAS/.exec(T))) {
+      info.prazo = m[1].startsWith('DUAS') ? '2 (duas) horas' : m[1].toLowerCase() + ' horas';
+      info.prazoItem = itemNumberBefore(T, m.index);
+    }
+    const found = [];
+    for (const c of CATALOG) {
+      let hit = null;
+      for (const re of c.edital) { const r = re.exec(T); if (r) { hit = r; break; } }
+      if (!hit) continue;
+      const item = itemNumberBefore(T, hit.index);
+      const trecho = T.slice(Math.max(0, hit.index - 60), hit.index + 260);
+      let exigida = true, nota = null;
+      if (c.condicional) {
+        const ctx = T.slice(Math.max(0, hit.index - 260), hit.index + 300);
+        if (c.condicional.test(ctx)) { exigida = false; nota = c.condNota; }
+      }
+      found.push({ id: c.id, item, trecho, exigida, nota });
+    }
+    return { info, found };
+  }
+
+  // ---------- reconhecimento de cada documento ----------
+  function situacao(T, okRe, posEfeitoRe, posRe) {
+    if (posEfeitoRe && posEfeitoRe.test(T)) return 'positiva c/ efeito de negativa';
+    if (okRe && okRe.test(T)) return 'negativa';
+    if (posRe && posRe.test(T)) return 'POSITIVA';
+    return null;
+  }
+  const RULES = [
+    { id: 'FED', test: T => /TRIBUTOS FEDERAIS E A DIVIDA ATIVA DA UNIAO/.test(T) || (/RECEITA FEDERAL/.test(T) && /PROCURADORIA-?\s?GERAL DA FAZENDA NACIONAL/.test(T) && /CERTIDAO/.test(T)),
+      read: T => {
+        const em = /EMITIDA AS .{0,20}?DO DIA (\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const va = /VALIDA ATE (\d{2}\/\d{2}\/\d{4})/.exec(T);
+        return { emissao: em && parseBR(em[1]), validade: va && parseBR(va[1]),
+          situacao: situacao(T, /CERTIDAO NEGATIVA/, /POSITIVA COM EFEITOS? DE NEGATIVA/, /CERTIDAO POSITIVA/) };
+      } },
+    { id: 'FGTS', test: T => /CERTIFICADO DE REGULARIDADE DO\s*FGTS/.test(T) || (/\bCRF\b/.test(T) && /FUNDO DE GARANTIA/.test(T)),
+      read: T => {
+        const v = /VALIDADE:?\s*(\d{2}\/\d{2}\/\d{4})\s*A\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        return { emissao: v && parseBR(v[1]), validade: v && parseBR(v[2]),
+          situacao: /SITUACAO REGULAR/.test(T) ? 'regular' : (/IRREGULAR/.test(T) ? 'IRREGULAR' : null) };
+      } },
+    { id: 'CNDT', test: T => /DEBITOS TRABALHISTAS/.test(T) && /JUSTICA DO TRABALHO/.test(T),
+      read: T => {
+        const em = /EXPEDICAO:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const va = /VALIDADE:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        return { emissao: em && parseBR(em[1]), validade: va && parseBR(va[1]),
+          situacao: situacao(T, /CERTIDAO NEGATIVA DE DEBITOS TRABALHISTAS|NAO CONSTA COMO\s+INADIMPLENTE/, /POSITIVA DE DEBITOS TRABALHISTAS COM EFEITO DE NEGATIVA/, /CERTIDAO POSITIVA DE DEBITOS TRABALHISTAS/) };
+      } },
+    { id: 'EST_NI', test: T => /NAO INSCRITOS NA DIVIDA ATIVA/.test(T),
+      read: T => {
+        const em = /DATA E HORA DA EMISSAO\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const e = em ? parseBR(em[1]) : emissaoHora(T);
+        const va = /VALIDA ATE:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        return { emissao: e, validade: va ? parseBR(va[1]) : applyRel(e, relValidity(T)),
+          situacao: situacao(T, /NAO CONSTAM DEBITOS/, /EFEITOS? DE NEGATIVA/, /CONSTAM DEBITOS/) };
+      } },
+    { id: 'EST', test: T => /DIVIDA ATIVA DO ESTADO/.test(T) || (/(FAZENDA|RECEITA) (ESTADUAL|DO ESTADO)|SECRETARIA (?:DE ESTADO )?D[AE] FAZENDA|PROCURADORIA GERAL DO ESTADO/.test(T) && /CERTID/.test(T) && /DEBITOS/.test(T)),
+      read: T => {
+        const em = /DATA E HORA DA EMISSAO\s*(\d{2}\/\d{2}\/\d{4})/.exec(T) || /EMITIDA EM:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T) || /EMISSAO:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const e = em ? parseBR(em[1]) : emissaoHora(T);
+        const va = /VALIDA ATE:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T) || /VALIDADE:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        return { emissao: e, validade: va ? parseBR(va[1]) : applyRel(e, relValidity(T)),
+          generica: !/DIVIDA ATIVA DO ESTADO DE SAO PAULO/.test(T),
+          situacao: situacao(T, /NAO CONSTAM DEBITOS|CERTIDAO NEGATIVA/, /EFEITOS? DE NEGATIVA/, /CERTIDAO POSITIVA|CONSTAM DEBITOS/) };
+      } },
+    { id: 'MUN', test: T => /(PREFEITURA|MUNICIPIO DE|SECRETARIA (?:MUNICIPAL )?DE FINANCAS)/.test(T) && /CERTIDAO/.test(T) && /(TRIBUTOS|DEBITOS)/.test(T) && !/COMPROVANTE DE INSCRICAO/.test(T),
+      read: T => {
+        const em = /EMITIDA EM:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T) || /EMISSAO:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const e = em && parseBR(em[1]);
+        const va = /VALIDA ATE:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T) || /VALIDADE:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        return { emissao: e, validade: va ? parseBR(va[1]) : applyRel(e, relValidity(T)), generica: true,
+          situacao: situacao(T, /CERTIDAO NEGATIVA|NAO CONSTAM/, /EFEITOS? DE NEGATIVA/, /CERTIDAO POSITIVA/) };
+      } },
+    { id: 'FAL', test: T => /FALENCIA/.test(T) && /(RECUPERAC|CONCORDATA)/.test(T) && /CERTID/.test(T),
+      read: T => {
+        const first = /(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const e = extensoDate(T) || (first && parseBR(first[1]));
+        const va = /VALIDA ATE:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const obs = [];
+        if (/NECESSARIO COMPLEMENTAR/.test(T)) obs.push('A própria certidão indica que deve ser complementada pela certidão do outro sistema do TJSP (SAJ/eproc).');
+        return { emissao: e, validade: va ? parseBR(va[1]) : null, presumida: !va, obs,
+          situacao: /NADA CONSTA/.test(T) ? 'negativa' : (/CONSTA/.test(T) ? 'CONSTA REGISTRO' : null) };
+      } },
+    { id: 'CIV', test: T => /(DISTRIBUICOES CIVEIS|ACOES CIVEIS|INSOLVENCIA)/.test(T) && /CERTID/.test(T),
+      read: T => {
+        const em = /EMITIDA AS .{0,10}?DE (\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const first = /(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const e = em ? parseBR(em[1]) : (extensoDate(T) || (first && parseBR(first[1])));
+        const obs = [];
+        if (/NECESSARIO COMPLEMENTAR/.test(T)) obs.push('A própria certidão indica que deve ser complementada pela certidão do outro sistema do TJSP (SAJ/eproc).');
+        return { emissao: e, validade: null, presumida: true, obs,
+          situacao: /NADA CONSTA/.test(T) ? 'negativa' : (/CONSTA/.test(T) ? 'CONSTA REGISTRO' : null) };
+      } },
+    { id: 'CNPJ', test: T => /CADASTRO NACIONAL DA PESSOA JURIDICA/.test(T) && /COMPROVANTE DE INSCRICAO/.test(T),
+      read: T => {
+        const s = /SITUACAO CADASTRAL\s+(ATIVA|BAIXADA|SUSPENSA|INAPTA|NULA)/.exec(T);
+        return { situacao: s ? s[1].toLowerCase() : null };
+      } },
+    { id: 'INSC', test: T => /CADESP|INSCRICAO MUNICIPAL|CADASTRO DE CONTRIBUINTES|SINTEGRA/.test(T),
+      read: T => {
+        const s = /SITUACAO CADASTRAL:?\s*(ATIVO|ATIVA|BAIXAD[OA]|SUSPENS[OA]|INAPT[OA])/.exec(T);
+        return { situacao: s ? s[1].toLowerCase() : null, sub: /CADESP|ICMS/.test(T) ? 'estadual' : 'municipal' };
+      } },
+  ];
+  const NAO_CERTIDAO = [
+    [/ATESTADO DE CAPACIDADE/, 'Atestado de capacidade técnica'],
+    [/BALANCO PATRIMONIAL|DEMONSTRACAO DO RESULTADO|INDICES FINANCEIROS|LIQUIDEZ CORRENTE/, 'Documento contábil'],
+    [/CONTRATO SOCIAL|ALTERACAO CONTRATUAL|JUNTA COMERCIAL/, 'Ato constitutivo / Junta Comercial'],
+    [/CARTEIRA NACIONAL DE HABILITACAO|\bCNH\b/, 'Documento pessoal'],
+    [/SIMPLES NACIONAL/, 'Consulta Simples Nacional'],
+  ];
+
+  function classify(raw, fileName) {
+    const T = flat(norm(raw));
+    const r = { arquivo: fileName, chars: T.replace(/\s/g, '').length, cnpjs: [] };
+    if (r.chars < 40) { r.tipo = null; r.semTexto = true; return r; }
+    for (const rule of RULES) {
+      if (rule.test(T)) {
+        r.tipo = rule.id;
+        Object.assign(r, rule.read(T));
+        break;
+      }
+    }
+    if (!r.tipo) {
+      for (const [re, label] of NAO_CERTIDAO) if (re.test(T)) { r.outro = label; break; }
+    }
+    r.cnpjs = [...new Set(findCnpjs(T))];
+    r.raiz = findRaiz(T);
+    const nome = /(?:NOME EMPRESARIAL:?|RAZAO\s+SOCIAL:?|NOME:)\s*([A-Z0-9][A-Z0-9 .&,\/-]{3,80}?)\s+(?:\(|CNPJ|RAIZ|TITULO|INSCRICAO|ENDERECO|PAIS|CERTIF)/.exec(T);
+    if (nome) r.nome = nome[1].trim();
+    return r;
+  }
+
+  // ---------- conferência ----------
+  // reqs: [{id, item}], docs: classify()[], cfg: {cnpj, ref, padraoDias}
+  function avaliar(reqs, docs, cfg) {
+    const alvo = onlyCnpj(cfg.cnpj);
+    const raizAlvo = alvo.slice(0, 8);
+    const hoje = today();
+    const linhas = [];
+    for (const req of reqs) {
+      const cat = byId[req.id];
+      const cands = docs.filter(d => d.tipo === req.id);
+      const avals = cands.map(d => avaliarDoc(d, cat, alvo, raizAlvo, cfg, hoje));
+      const ordem = { ok: 0, atencao: 1, vencida: 2, erro: 3 };
+      avals.sort((a, b) => ordem[a.status] - ordem[b.status] || ((b.validade || 0) - (a.validade || 0)));
+      const best = avals[0];
+      linhas.push({ req, cat, doc: best || null, outros: avals.slice(1),
+        status: best ? best.status : 'faltando' });
+    }
+    const usados = new Set(reqs.map(r => r.id));
+    const extras = docs.filter(d => !usados.has(d.tipo));
+    const pend = linhas.filter(l => l.status === 'faltando' || l.status === 'vencida' || l.status === 'erro');
+    const aten = linhas.filter(l => l.status === 'atencao');
+    return { linhas, extras, pend, aten, ok: pend.length === 0 && aten.length === 0 };
+  }
+  function avaliarDoc(d, cat, alvo, raizAlvo, cfg, hoje) {
+    const a = { ...d, problemas: [], avisos: [], infos: [] };
+    for (const o of (d.obs || [])) {
+      const par = d.tipo === 'FAL' ? 'CIV' : (d.tipo === 'CIV' ? 'FAL' : null);
+      const comp = par && (cfg.allDocs || []).find(x => x.tipo === par);
+      if (comp) a.infos.push(`Complementada por “${comp.arquivo}”.`); else a.avisos.push(o);
+    }
+    // CNPJ
+    const raizDoc = d.cnpjs.map(c => c.slice(0, 8));
+    if (!alvo) a.avisos.push('Informe o CNPJ do fornecedor para conferir.');
+    else if (d.cnpjs.includes(alvo)) a.cnpjOk = 'exato';
+    else if (raizDoc.includes(raizAlvo) || d.raiz === raizAlvo) {
+      if (cat.escopo === 'raiz' || (d.raiz === raizAlvo && !d.cnpjs.length)) a.cnpjOk = 'raiz';
+      else { a.cnpjOk = 'filial'; a.avisos.push('CNPJ de outro estabelecimento da mesma empresa (matriz/filial). Confira se o recolhimento é centralizado.'); }
+    } else if (d.cnpjs.length || d.raiz) { a.cnpjOk = 'diferente'; a.problemas.push('CNPJ não corresponde ao fornecedor.'); }
+    else { a.cnpjOk = 'nao-lido'; a.avisos.push('CNPJ não localizado no documento.'); }
+    // situação
+    if (d.situacao && /^(POSITIVA|IRREGULAR|CONSTA REGISTRO)$/.test(d.situacao)) a.problemas.push(`Situação: ${d.situacao.toLowerCase()}.`);
+    if (d.situacao && /^(baixada|suspensa|inapta|nula|baixado|suspenso|inapto)$/.test(d.situacao)) a.problemas.push(`Situação cadastral: ${d.situacao}.`);
+    if (d.ocr) a.avisos.push('Lido por OCR (documento digitalizado): confira CNPJ e datas no arquivo.');
+    if (d.generica) a.avisos.push('Modelo de outro emissor, reconhecido por padrão genérico. Confira os dados.');
+    // validade
+    if (cat.validade) {
+      let val = d.validade;
+      if (!val && (d.presumida || cat.presumida) && d.emissao) { val = addDays(d.emissao, cfg.padraoDias); a.presumida = true; a.infos.push(`Sem prazo impresso: validade presumida de ${cfg.padraoDias} dias a partir da emissão.`); }
+      a.validade = val;
+      if (!val) a.avisos.push('Validade não localizada no documento.');
+      else {
+        const dRef = diffDays(val, cfg.ref);
+        if (dRef < 0) a.problemas.push(`Vencida em ${fmt(val)} (antes da data de referência).`);
+        else {
+          const dHoje = diffDays(val, hoje);
+          if (dHoje < 0 && diffDays(cfg.ref, hoje) < 0) a.infos.push(`Válida na data de referência, mas já vencida hoje (${fmt(val)}).`);
+          else if (dHoje >= 0 && dHoje <= 5) a.avisos.push(`Vence em ${dHoje} dia(s).`);
+        }
+      }
+    }
+    if (a.problemas.some(p => p.startsWith('Vencida'))) a.status = a.problemas.length > 1 ? 'erro' : 'vencida';
+    else if (a.problemas.length) a.status = 'erro';
+    else if (a.avisos.length) a.status = 'atencao';
+    else a.status = 'ok';
+    return a;
+  }
+
+  return { addDays, norm, parseEdital, classify, avaliar, CATALOG, byId, fmt, fmtCnpj, onlyCnpj, cnpjValid, parseBR, today, diffDays };
+})();
+
+
+</script>
+<script>
+(() => {
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+const LS = { get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } }, set(k,v){ try { localStorage.setItem(k,v); } catch(e){} } };
+
+const S = {
+  exemplo: true,
+  info: {},
+  reqs: [],        // {id,item,trecho,exigida,nota,manual}
+  docs: [],
+  override: {},    // id -> 'auto'|'sicaf'|'dispensa'
+  refMode: 'hoje', refCustom: null, padrao: 90,
+};
+
+// ---------- exemplo fictício ----------
+function loadExample(){
+  const t = Core.today(), d = n => Core.addDays(t, n);
+  S.exemplo = true;
+  S.info = { pregao: '00/2026', processo: '000.00000/2026-00', sessao: d(-3), objeto: 'EQUIPAMENTOS DE LABORATÓRIO (EXEMPLO)', prazo: '2 (duas) horas' };
+  S.reqs = [
+    {id:'CNPJ',item:'8.14',exigida:true},{id:'FED',item:'8.15',exigida:true},{id:'FGTS',item:'8.16',exigida:true},
+    {id:'CNDT',item:'8.17',exigida:true},{id:'INSC',item:'8.18',exigida:true},{id:'EST',item:'8.19',exigida:true},
+    {id:'MUN',item:'8.19',exigida:false,nota:Core.byId.MUN.condNota},{id:'FAL',item:'8.23',exigida:true}];
+  const C = '11222333000181';
+  S.docs = [
+    {arquivo:'cnd_federal.pdf',tipo:'FED',cnpjs:[C],emissao:d(-40),validade:d(140),situacao:'negativa'},
+    {arquivo:'crf_fgts.pdf',tipo:'FGTS',cnpjs:[C],emissao:d(-38),validade:d(-8),situacao:'regular'},
+    {arquivo:'cndt.pdf',tipo:'CNDT',cnpjs:[C],emissao:d(-20),validade:d(160),situacao:'negativa'},
+    {arquivo:'falencia_tjsp.pdf',tipo:'FAL',cnpjs:[C],emissao:d(-12),validade:null,presumida:true,situacao:'negativa'},
+    {arquivo:'comprovante_cnpj.pdf',tipo:'CNPJ',cnpjs:[C],situacao:'ativa'},
+    {arquivo:'cadesp.pdf',tipo:'INSC',cnpjs:[C],situacao:'ativo'},
+    {arquivo:'atestado_capacidade.pdf',tipo:null,outro:'Atestado de capacidade técnica',cnpjs:[C]},
+  ];
+  $('razao').value = 'EXEMPLO COMÉRCIO DE EQUIPAMENTOS LTDA';
+  $('cnpj').value = Core.fmtCnpj(C);
+  S.refMode = 'hoje';
+}
+function leaveExample(){
+  if (!S.exemplo) return;
+  S.exemplo = false; S.info = {}; S.reqs = []; S.docs = []; S.override = {};
+  $('razao').value = ''; $('cnpj').value = '';
+  S.refMode = 'sessao';
+}
+
+// ---------- PDF + OCR ----------
+const OCR_MAX_PAGES = 4;
+const TESS_CDN = 'https://cdn.jsdelivr.net/npm/';
+let ocrWorkerP = null;
+async function ocrConfig(){
+  // Versão publicada: OCR hospedado junto da página. Versão local/GitHub: CDN.
+  try {
+    const r = await fetch('tesseract/ocr-worker.js', { method: 'HEAD' });
+    if (r.ok){
+      const base = new URL('.', location.href).href;
+      return { workerPath: base + 'tesseract/ocr-worker.js', corePath: base + 'tesseract/', langPath: base + 'tessdata', workerBlobURL: false, gzip: true, cacheMethod: 'none' };
+    }
+  } catch(e){}
+  return { workerPath: TESS_CDN + 'tesseract.js@5.1.1/dist/worker.min.js', corePath: TESS_CDN + 'tesseract.js-core@5.1.1/',
+           langPath: TESS_CDN + '@tesseract.js-data/por/4.0.0_best_int', workerBlobURL: true, gzip: true };
+}
+function getOcr(){
+  if (!window.Tesseract) return Promise.reject(new Error('Tesseract não carregado'));
+  if (!ocrWorkerP) ocrWorkerP = (async () => Tesseract.createWorker('por', 1, await ocrConfig()))()
+    .catch(e => { ocrWorkerP = null; throw e; });
+  return ocrWorkerP;
+}
+async function ocrCanvas(canvas){
+  const w = await getOcr();
+  const { data } = await w.recognize(canvas);
+  return data.text || '';
+}
+function pageText(tc){
+  let out = '', lastY = null;
+  for (const it of tc.items){
+    const y = it.transform ? it.transform[5] : null;
+    if (lastY !== null && y !== null && Math.abs(y - lastY) > 2) out += '\n';
+    else if (out && !out.endsWith(' ') && !out.endsWith('\n')) out += ' ';
+    out += it.str; if (it.hasEOL) out += '\n'; lastY = y;
+  }
+  return out + '\n';
+}
+// devolve { text, ocr: bool, ocrErro?: string }
+async function pdfText(file, progress){
+  if (/^image\//.test(file.type) || /\.(jpe?g|png|webp|bmp|tiff?)$/i.test(file.name)){
+    progress && progress('reconhecendo texto da imagem (OCR)');
+    const bmp = await createImageBitmap(file);
+    const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height;
+    c.getContext('2d').drawImage(bmp, 0, 0);
+    try { return { text: await ocrCanvas(c), ocr: true }; } catch(e){ return { text: '', ocr: true, ocrErro: e.message }; }
+  }
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const doc = await pdfjsLib.getDocument({ data: buf, verbosity: 0 }).promise;
+  let out = '';
+  for (let p = 1; p <= doc.numPages; p++) out += pageText(await (await doc.getPage(p)).getTextContent());
+  if (out.replace(/\s/g, '').length >= 40 || !progress) return { text: out, ocr: false, paginas: doc.numPages };
+  // PDF sem camada de texto: digitalizado → OCR das primeiras páginas
+  let txt = '';
+  const n = Math.min(doc.numPages, OCR_MAX_PAGES);
+  try {
+    for (let p = 1; p <= n; p++){
+      progress(`OCR da página ${p} de ${n}`);
+      const pg = await doc.getPage(p);
+      const vp = pg.getViewport({ scale: 1 });
+      const scale = Math.min(3, 2400 / Math.max(vp.width, vp.height)); // ~250–300 dpi numa página A4
+      const v = pg.getViewport({ scale });
+      const c = document.createElement('canvas'); c.width = Math.ceil(v.width); c.height = Math.ceil(v.height);
+      const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
+      await pg.render({ canvasContext: ctx, viewport: v }).promise;
+      txt += await ocrCanvas(c) + '\n';
+    }
+  } catch(e){ return { text: out, ocr: true, ocrErro: e.message, paginas: doc.numPages }; }
+  return { text: txt, ocr: true, paginas: doc.numPages, parcial: doc.numPages > n };
+}
+
+function applyEdital(E, nome){
+  S.info = E.info; S.info.arquivo = nome;
+  if (!S.info.processo){ const m = /(\d{3}\.\d{5}[_/]\d{4}-\d{2})/.exec(nome); if (m) S.info.processo = m[1].replace('_','/'); }
+  S.reqs = E.found; S.override = {};
+  if (S.info.prazo) $('prazo').value = S.info.prazo;
+  S.refMode = S.info.sessao ? 'sessao' : 'hoje';
+}
+async function onEdital(file){
+  if (!file) return;
+  if (!window.pdfjsLib){ $('busyEdital').hidden = false; $('busyEdital').textContent = 'Não foi possível carregar o leitor de PDF. Verifique a conexão e recarregue a página.'; return; }
+  leaveExample();
+  const b = $('busyEdital'); b.hidden = false; b.textContent = 'Lendo o edital…';
+  try {
+    const E = Core.parseEdital((await pdfText(file)).text);
+    applyEdital(E, file.name);
+    b.textContent = `${E.found.filter(f=>f.exigida).length} certidões/documentos identificados. Desmarque o que não se aplica.`;
+  } catch(e){ b.textContent = 'Não foi possível ler este PDF. Ele pode estar protegido ou ser uma imagem digitalizada.'; }
+  render();
+}
+
+async function onDocs(files){
+  if (!files || !files.length) return;
+  if (!window.pdfjsLib){ $('busyDocs').hidden = false; $('busyDocs').textContent = 'Não foi possível carregar o leitor de PDF. Verifique a conexão e recarregue a página.'; return; }
+  leaveExample();
+  const b = $('busyDocs'); b.hidden = false;
+  let i = 0;
+  files = files.filter(f => /\.pdf$/i.test(f.name) || /pdf$/i.test(f.type) || /^image\//.test(f.type) || /\.(jpe?g|png|webp|bmp|tiff?)$/i.test(f.name));
+  if (!files.length){ b.textContent = 'Nenhum PDF ou imagem encontrado.'; return; }
+  // edital primeiro, se estiver na pasta
+  files.sort((a, b2) => (/EDITAL|PREG[AÃ]O/i.test(b2.name) ? 1 : 0) - (/EDITAL|PREG[AÃ]O/i.test(a.name) ? 1 : 0));
+  let editalNaPasta = null;
+  for (const f of files){
+    i++; b.textContent = `Lendo ${i} de ${files.length}: ${f.name}`;
+    if (S.docs.some(d => d.arquivo === f.name)) continue;
+    try {
+      const r = await pdfText(f, msg => { b.textContent = `Lendo ${i} de ${files.length}: ${f.name} · ${msg}…`; });
+      if (!S.info.arquivo && !editalNaPasta && (r.paginas || 0) >= 8 && /EDITAL|TERMO DE REFERENCIA/i.test(Core.norm(r.text))){
+        const E = Core.parseEdital(r.text);
+        if (E.found.filter(x => x.exigida).length >= 3){ applyEdital(E, f.name); editalNaPasta = f.name; continue; }
+      }
+      const d = Core.classify(r.text, f.name);
+      if (r.ocr){ d.ocr = true; d.semTexto = d.chars < 40; if (r.ocrErro) d.ocrErro = r.ocrErro; }
+      S.docs.push(d);
+    }
+    catch(e){ S.docs.push({ arquivo: f.name, tipo: null, erroLeitura: true, cnpjs: [] }); }
+  }
+  b.textContent = `${S.docs.length} arquivo(s) analisados.` + (editalNaPasta ? ` Edital reconhecido: ${editalNaPasta}.` : '');
+  if (editalNaPasta){ const be = $('busyEdital'); be.hidden = false; be.textContent = `Edital lido da pasta (${editalNaPasta}). ${S.reqs.filter(f=>f.exigida).length} certidões/documentos identificados.`; }
+  autoFornecedor();
+  render();
+}
+
+function autoFornecedor(){
+  if (!Core.onlyCnpj($('cnpj').value)){
+    const cnt = {};
+    for (const d of S.docs) if (d.tipo) for (const c of d.cnpjs) cnt[c] = (cnt[c]||0) + 1;
+    const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+    if (top) $('cnpj').value = Core.fmtCnpj(top[0]);
+  }
+  if (!$('razao').value.trim()){
+    const cnt = {};
+    for (const d of S.docs) if (d.nome && d.nome.length > 4) cnt[d.nome] = (cnt[d.nome]||0) + 1;
+    const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+    if (top) $('razao').value = top[0];
+  }
+}
+
+// ---------- referência ----------
+function refDate(){
+  if (S.refMode === 'sessao' && S.info.sessao) return S.info.sessao;
+  if (S.refMode === 'custom' && S.refCustom) return S.refCustom;
+  return Core.today();
+}
+const toISO = d => d ? d.toISOString().slice(0,10) : '';
+const fromISO = v => { if (!v) return null; const [y,m,d] = v.split('-').map(Number); return new Date(Date.UTC(y,m-1,d,12)); };
+
+// ---------- render ----------
+const ST = { ok:'Conforme', atencao:'Conferir', vencida:'Vencida', erro:'Irregular', faltando:'Não enviada', sicaf:'Conferida no SICAF' };
+
+function render(){
+  // processo
+  const I = S.info;
+  $('proc').innerHTML = [
+    ['Pregão', I.pregao], ['Processo SEI', I.processo], ['Sessão', I.sessao ? Core.fmt(I.sessao) : null],
+  ].filter(x=>x[1]).map(([k,v]) => `<div><span>${k}</span><b>${esc(v)}</b></div>`).join('');
+  $('exampleBar').hidden = !S.exemplo;
+
+  // referência
+  document.querySelectorAll('.seg button').forEach(bt => bt.setAttribute('aria-pressed', String(bt.dataset.ref === S.refMode)));
+  $('refSessao').disabled = !I.sessao; $('refSessao').title = I.sessao ? '' : 'Data da sessão não localizada no edital';
+  $('refCustom').hidden = S.refMode !== 'custom';
+
+  // CNPJ hint
+  const c = Core.onlyCnpj($('cnpj').value);
+  $('cnpjHint').textContent = !c ? '' : (c.length === 14 ? (Core.cnpjValid(c) ? 'CNPJ válido.' : 'CNPJ inválido: confira os dígitos.') : 'Informe os 14 caracteres do CNPJ.');
+  $('cnpjHint').style.color = c.length === 14 && !Core.cnpjValid(c) ? 'var(--bad)' : '';
+
+  renderReqs(); renderDocs(); renderResult();
+}
+
+function renderReqs(){
+  const ul = $('reqs');
+  const ids = new Set(S.reqs.map(r => r.id));
+  const faltantes = Core.CATALOG.filter(c => !ids.has(c.id));
+  ul.innerHTML = S.reqs.map((r,i) => {
+    const c = Core.byId[r.id];
+    return `<li><input type="checkbox" id="rq${i}" data-i="${i}" ${r.exigida?'checked':''} aria-label="Exigir ${esc(c.nome)}">
+      <div><label for="rq${i}" class="nm">${esc(c.nome)}</label>
+        ${r.nota ? `<div class="nt">${esc(r.nota)}</div>` : ''}
+        ${r.trecho ? `<details><summary>Ver trecho do edital</summary><blockquote>${esc(r.trecho)}…</blockquote></details>` : ''}
+      </div><span class="item">${r.item ? 'item ' + esc(r.item) : (r.manual ? 'incluída' : '')}</span></li>`;
+  }).join('') + (faltantes.length ? `<li style="grid-template-columns:1fr"><select id="addReq" aria-label="Incluir certidão"><option value="">+ Incluir outra certidão…</option>${faltantes.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></li>` : '');
+  ul.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => { S.reqs[+cb.dataset.i].exigida = cb.checked; renderResult(); });
+  const add = $('addReq'); if (add) add.onchange = () => { if (add.value){ S.reqs.push({ id: add.value, exigida: true, manual: true }); render(); } };
+}
+
+function renderDocs(){
+  const box = $('docs');
+  if (!S.docs.length){ box.innerHTML = '<div class="none">Nenhum documento enviado.</div>'; return; }
+  const opts = d => `<option value="">Não é certidão exigida</option>` + Core.CATALOG.map(c => `<option value="${c.id}" ${d.tipo===c.id?'selected':''}>${esc(c.nome)}</option>`).join('');
+  box.innerHTML = S.docs.map((d,i) => {
+    const cat = d.tipo && Core.byId[d.tipo];
+    const tags = [];
+    if (d.ocr && d.ocrErro) tags.push('OCR indisponível');
+    else if (d.semTexto) tags.push(d.ocr ? 'Digitalizado: OCR não leu texto' : 'Sem texto (digitalizado)');
+    else if (d.ocr) tags.push('Lido por OCR');
+    if (d.erroLeitura) tags.push('Erro de leitura');
+    if (!d.tipo && !d.semTexto && !d.erroLeitura) tags.push(d.outro || 'Não reconhecido');
+    if (d.manual) tags.push('Classificado manualmente');
+    const label = tags.map(t => `<span class="tag">${esc(t)}</span>`).join(' ');
+    const meta = [];
+    if (d.cnpjs && d.cnpjs.length) meta.push('CNPJ ' + d.cnpjs.map(Core.fmtCnpj).join(', '));
+    else if (d.raiz) meta.push('Raiz ' + Core.fmtCnpj(d.raiz));
+    if (d.emissao) meta.push('emissão ' + Core.fmt(d.emissao));
+    if (d.validade) meta.push('validade ' + Core.fmt(d.validade));
+    if (d.situacao) meta.push(d.situacao);
+    const needVal = cat && cat.validade;
+    return `<div class="doc ${d.tipo?'':'unk'}"><div class="fn">${esc(d.arquivo)} ${label}</div>
+      <select data-i="${i}" class="tsel" aria-label="Tipo de ${esc(d.arquivo)}">${opts(d)}</select>
+      ${meta.length ? `<div class="meta">${meta.map(esc).map(m=>`<span>${m}</span>`).join('')}</div>` : ''}
+      ${needVal && (d.manual || !d.validade || d.validadeManual) ? `<div class="vin"><label for="vd${i}">Validade conferida manualmente</label><input type="date" id="vd${i}" data-i="${i}" class="vsel" value="${toISO(d.validadeManual ? d.validade : null)}"></div>` : ''}
+    </div>`;
+  }).join('');
+  box.querySelectorAll('.tsel').forEach(s => s.onchange = () => {
+    const d = S.docs[+s.dataset.i]; d.tipo = s.value || null; d.manual = true;
+    if (d.tipo && (!d.cnpjs || !d.cnpjs.length)) d.cnpjs = [];
+    render();
+  });
+  box.querySelectorAll('.vsel').forEach(inp => inp.onchange = () => {
+    const d = S.docs[+inp.dataset.i]; const v = fromISO(inp.value);
+    d.validade = v; d.validadeManual = !!v; d.presumida = !v && Core.byId[d.tipo]?.presumida;
+    renderResult();
+  });
+}
+
+function evaluate(){
+  const reqs = S.reqs.filter(r => r.exigida && S.override[r.id] !== 'dispensa');
+  const cfg = { cnpj: $('cnpj').value, ref: refDate(), padraoDias: +$('padrao').value || 90, allDocs: S.docs };
+  const docs = S.docs.map(d => d.manual && d.tipo && !d.cnpjs.length ? { ...d, obs: [...(d.obs||[]), 'CNPJ não lido automaticamente: confira no documento.'] } : d);
+  const R = Core.avaliar(reqs, docs, cfg);
+  for (const l of R.linhas) if (S.override[l.req.id] === 'sicaf'){ l.statusAuto = l.status; l.status = 'sicaf'; }
+  R.pend = R.linhas.filter(l => ['faltando','vencida','erro'].includes(l.status));
+  R.aten = R.linhas.filter(l => l.status === 'atencao');
+  R.okc = R.linhas.filter(l => l.status === 'ok' || l.status === 'sicaf');
+  R.dispensadas = S.reqs.filter(r => r.exigida && S.override[r.id] === 'dispensa');
+  R.cfg = cfg;
+  return R;
+}
+
+function renderResult(){
+  const R = evaluate();
+  const n = R.linhas.length;
+  $('sum').innerHTML = [
+    [R.okc.length, 'conformes'], [R.aten.length, 'a conferir'], [R.pend.length, 'pendências'],
+  ].map(([v,k]) => `<div><b>${v}</b><span>${k}</span></div>`).join('') +
+    `<div><b style="font:500 15px/1.7 var(--f-mono)">${Core.fmt(R.cfg.ref)}</b><span>data de referência</span></div>`;
+  const st = $('stamp');
+  if (!n){ st.className = 'stamp warn'; st.innerHTML = 'Aguardando<small>envie o edital</small>'; }
+  else if (R.pend.length){ st.className = 'stamp bad'; st.innerHTML = `Com pendências<small>${R.pend.length} de ${n} itens</small>`; }
+  else if (R.aten.length){ st.className = 'stamp warn'; st.innerHTML = `Conferir<small>${R.aten.length} item(ns) com ressalva</small>`; }
+  else { st.className = 'stamp ok'; st.innerHTML = `OK · Conforme<small>${n} de ${n} itens</small>`; }
+
+  const tb = $('tbody');
+  tb.innerHTML = R.linhas.map(l => {
+    const d = l.doc, c = l.cat;
+    const notes = d ? [...d.problemas.map(x=>['p',x]), ...d.avisos.map(x=>['a',x]), ...d.infos.map(x=>['i',x])] : [];
+    if (l.status === 'sicaf') notes.unshift(['i', 'Regularidade confirmada manualmente no SICAF ou no site do emissor.']);
+    if (d && l.outros.length) notes.push(['i', `Outro(s) arquivo(s) do mesmo tipo: ${l.outros.map(o=>o.arquivo).join(', ')}.`]);
+    const cnpjTxt = !d ? '—' : (d.cnpjs.length ? d.cnpjs.map(Core.fmtCnpj).join('<br>') : (d.raiz ? 'raiz ' + Core.fmtCnpj(d.raiz) : '—'));
+    const cnpjMark = d && d.cnpjOk ? ({exato:' ✓', raiz:' ✓', filial:' ≠ estab.', diferente:' ✗', 'nao-lido':''}[d.cnpjOk]) : '';
+    const val = !d ? '—' : (d.validade ? Core.fmt(d.validade) + (d.presumida ? '*' : '') : (c.validade ? '?' : 'não se aplica'));
+    const ov = S.override[l.req.id] || 'auto';
+    return `<tr class="st-${l.status}">
+      <td><span class="pill s-${l.status}">${ST[l.status]}</span></td>
+      <td><div class="cert">${esc(c.nome)}</div>
+        <div class="file">${l.req.item ? 'Item ' + esc(l.req.item) + ' · ' : ''}${d ? esc(d.arquivo) : 'Nenhum arquivo deste tipo foi enviado'}${c.link ? ` · <a href="${c.link}" target="_blank" rel="noopener">verificar no emissor</a>` : ''}</div>
+        ${notes.length ? `<ul>${notes.map(([k,t]) => `<li class="${k}">${esc(t)}</li>`).join('')}</ul>` : ''}</td>
+      <td class="mono">${cnpjTxt}${esc(cnpjMark)}</td>
+      <td class="mono">${d && d.emissao ? Core.fmt(d.emissao) : '—'}</td>
+      <td class="mono">${val}</td>
+      <td><select data-id="${l.req.id}" class="ovr" aria-label="Ajuste manual para ${esc(c.nome)}">
+        <option value="auto" ${ov==='auto'?'selected':''}>Automático</option>
+        <option value="sicaf" ${ov==='sicaf'?'selected':''}>Conferida no SICAF / site</option>
+        <option value="dispensa" ${ov==='dispensa'?'selected':''}>Não exigir</option></select></td></tr>`;
+  }).join('') || `<tr><td colspan="6" class="none">Envie o edital ou inclua as certidões exigidas na etapa 1.</td></tr>`;
+  tb.querySelectorAll('.ovr').forEach(s => s.onchange = () => { S.override[s.dataset.id] = s.value; renderResult(); });
+
+  const ex = [];
+  const naoExig = R.extras.filter(d => d.tipo);
+  const outros = R.extras.filter(d => !d.tipo);
+  if (R.dispensadas.length) ex.push(`<div><b>Marcadas como não exigidas:</b> ${R.dispensadas.map(r => esc(Core.byId[r.id].nome)).join(', ')} <button type="button" class="b ghost" id="undoDisp" style="padding:2px 8px;margin-left:6px">Restaurar</button></div>`);
+  if (naoExig.length) ex.push(`<div><b>Certidões enviadas e não exigidas pelo edital:</b><ul>${naoExig.map(d=>`<li>${esc(d.arquivo)} (${esc(Core.byId[d.tipo].nome)})</li>`).join('')}</ul></div>`);
+  if (outros.length) ex.push(`<div><b>Outros documentos (não conferidos aqui):</b><ul>${outros.map(d=>`<li>${esc(d.arquivo)}${d.outro?` · ${esc(d.outro)}`:''}${d.semTexto?' · sem texto, digitalizado':''}</li>`).join('')}</ul></div>`);
+  if (R.linhas.some(l => l.doc && l.doc.presumida)) ex.push(`<div>* Validade presumida (${R.cfg.padraoDias} dias da emissão), pois a certidão não traz prazo impresso.</div>`);
+  $('extras').innerHTML = ex.join('');
+  const u = $('undoDisp'); if (u) u.onclick = () => { for (const k in S.override) if (S.override[k]==='dispensa') delete S.override[k]; renderResult(); };
+
+  renderMsg(R);
+}
+
+function renderMsg(R){
+  const razao = $('razao').value.trim() || '[RAZÃO SOCIAL]';
+  const cnpj = Core.onlyCnpj($('cnpj').value) ? Core.fmtCnpj($('cnpj').value) : '[CNPJ]';
+  const I = S.info;
+  if (!R.pend.length){
+    $('msgSub').textContent = R.linhas.length ? 'Não há pendências: nenhuma mensagem é necessária.' + (R.aten.length ? ' Há itens com ressalva para conferir na tabela.' : '') : 'A mensagem será gerada depois da conferência.';
+    $('msg').value = ''; return;
+  }
+  $('msgSub').textContent = `Texto gerado com ${R.pend.length} pendência(s). Revise antes de enviar.`;
+  const motivo = l => {
+    const d = l.doc;
+    if (l.status === 'faltando') return 'documento não encaminhado';
+    const p = [];
+    if (d.problemas.some(x => x.startsWith('Vencida'))) p.push(`certidão apresentada com validade expirada em ${Core.fmt(d.validade)}`);
+    if (d.cnpjOk === 'diferente') p.push(`certidão emitida para CNPJ diverso do licitante (${d.cnpjs.map(Core.fmtCnpj).join(', ')})`);
+    for (const x of d.problemas) if (/^Situa/.test(x)) p.push(`certidão com ${x.replace(/\.$/,'').toLowerCase()}`);
+    return p.join('; ') || 'documento irregular';
+  };
+  const linhas = R.pend.map((l,i) => `${i+1}. ${l.cat.longo}${l.req.item ? ` (item ${l.req.item})` : ''}: ${motivo(l)}.`);
+  const ident = [I.pregao ? `ao Pregão Eletrônico nº ${I.pregao}` : 'ao procedimento licitatório em epígrafe', I.processo ? `(Processo SEI nº ${I.processo})` : ''].filter(Boolean).join(' ');
+  const objeto = I.objeto ? `, cujo objeto é a aquisição de ${I.objeto.toLowerCase()}` : '';
+  const assunto = `Assunto: ${I.pregao ? `Pregão Eletrônico nº ${I.pregao}` : 'Licitação'} – solicitação de documentos de habilitação`;
+  $('msg').value =
+`${assunto}
+
+À empresa ${razao}
+CNPJ ${cnpj}
+
+Prezados(as) Senhores(as),
+
+Em referência ${ident}${objeto}, informamos que, na análise dos documentos de habilitação encaminhados por essa empresa, foram identificadas as seguintes pendências:
+
+${linhas.join('\n')}
+
+Solicitamos o envio ${R.pend.length > 1 ? 'dos documentos' : 'do documento'} acima, em plena validade e em nome do estabelecimento licitante (CNPJ ${cnpj}), no prazo de ${$('prazo').value.trim() || '[PRAZO]'}, contado do recebimento desta mensagem, por meio do sistema, nos termos do art. 64 da Lei nº 14.133/2021 e do edital.
+
+O não atendimento no prazo indicado poderá ensejar a inabilitação da empresa no certame.
+
+Atenciosamente,
+
+${$('assin').value.trim()}`;
+}
+
+// ---------- eventos ----------
+async function walkEntries(entries){
+  const out = [];
+  const readAll = dir => new Promise(res => { const r = dir.createReader(), acc = [];
+    const next = () => r.readEntries(batch => { if (!batch.length) res(acc); else { acc.push(...batch); next(); } }, () => res(acc)); next(); });
+  const visit = async en => {
+    if (en.isFile) out.push(await new Promise(res => en.file(res, () => res(null))));
+    else if (en.isDirectory) for (const c of await readAll(en)) await visit(c);
+  };
+  for (const en of entries) await visit(en);
+  return out.filter(Boolean);
+}
+function wireDrop(zoneId, inputId, handler, multi){
+  const z = $(zoneId), inp = $(inputId);
+  inp.onchange = () => { handler(multi ? [...inp.files] : inp.files[0]); inp.value = ''; };
+  z.addEventListener('dragover', e => { e.preventDefault(); z.classList.add('over'); });
+  z.addEventListener('dragleave', () => z.classList.remove('over'));
+  z.addEventListener('drop', async e => { e.preventDefault(); z.classList.remove('over');
+    const items = [...(e.dataTransfer.items || [])].map(it => it.webkitGetAsEntry && it.webkitGetAsEntry()).filter(Boolean);
+    if (multi && items.some(en => en.isDirectory)){ handler(await walkEntries(items)); return; }
+    const fs = [...e.dataTransfer.files].filter(f => /pdf$/i.test(f.type) || /\.pdf$/i.test(f.name) || (multi && /^image\//.test(f.type)));
+    if (fs.length) handler(multi ? fs : fs[0]); });
+}
+wireDrop('dropEdital', 'fileEdital', onEdital, false);
+wireDrop('dropDocs', 'fileDocs', onDocs, true);
+$('fileDir').onchange = () => { onDocs([...$('fileDir').files]); $('fileDir').value = ''; };
+$('clearDocs').onclick = () => { leaveExample(); S.docs = []; $('busyDocs').hidden = true; render(); };
+document.querySelectorAll('.seg button').forEach(bt => bt.onclick = () => {
+  S.refMode = bt.dataset.ref;
+  if (S.refMode === 'custom' && !S.refCustom){ S.refCustom = Core.today(); $('refCustom').value = toISO(S.refCustom); }
+  render();
+});
+$('refCustom').onchange = () => { S.refCustom = fromISO($('refCustom').value); render(); };
+['cnpj','razao','padrao','prazo'].forEach(id => $(id).addEventListener('input', () => render()));
+$('assin').addEventListener('input', () => { LS.set('cc_assin', $('assin').value); renderResult(); });
+$('copy').onclick = () => {
+  const t = $('msg').value; if (!t){ $('toast').textContent = 'Não há mensagem para copiar.'; return; }
+  const done = () => { $('toast').textContent = 'Mensagem copiada.'; setTimeout(() => $('toast').textContent = '', 2500); };
+  try { navigator.clipboard.writeText(t).then(done, () => { $('msg').select(); $('toast').textContent = 'Texto selecionado: use Ctrl+C.'; }); }
+  catch(e){ $('msg').select(); $('toast').textContent = 'Texto selecionado: use Ctrl+C.'; }
+};
+const sv = LS.get('cc_assin'); if (sv) $('assin').value = sv;
+
+loadExample();
+render();
+})();
+</script>
