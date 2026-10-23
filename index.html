@@ -104,6 +104,7 @@ tr.st-faltando td:first-child,tr.st-vencida td:first-child,tr.st-erro td:first-c
 tr.st-atencao td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
 td select{font-size:12px;padding:4px 6px;min-width:150px}
 td a{color:var(--accent)}
+tr.grp td{background:var(--soft);font:600 11px/1.4 var(--f-body);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:8px 10px}
 .extras{margin-top:14px;font-size:13px;color:var(--muted)}
 .extras ul{margin:4px 0 0;padding-left:18px}
 .msg textarea{min-height:300px;font:13.5px/1.55 var(--f-body);resize:vertical}
@@ -322,6 +323,22 @@ const Core = (() => {
       edital: [/INSCRICAO NO CADASTRO NACIONAL (?:DE|DA) PESSOAS? JURIDICAS?/] },
     { id: 'INSC', nome: 'Inscrição estadual ou municipal', longo: 'Prova de inscrição no cadastro de contribuintes estadual e/ou municipal', escopo: 'estab', validade: false,
       edital: [/INSCRICAO NO CADASTRO DE CONTRIBUINTES/] },
+    { id: 'SICAF', grupo: 'sicaf', nome: 'Declaração do SICAF', longo: 'Declaração de situação do fornecedor no SICAF', validade: false, edital: [] },
+    // ---- consultas de sanções (feitas pelo pregoeiro; não entram na mensagem à empresa) ----
+    { id: 'CEIS', grupo: 'consulta', nome: 'CEIS — Inidôneas e Suspensas (CGU)', longo: 'Consulta ao CEIS', validade: false,
+      edital: [/EMPRESAS INIDONEAS E SUSPENSAS/, /\bCEIS\b/], link: 'https://portaldatransparencia.gov.br/sancoes/ceis' },
+    { id: 'CNEP', grupo: 'consulta', nome: 'CNEP — Empresas Punidas (CGU)', longo: 'Consulta ao CNEP', validade: false,
+      edital: [/CADASTRO NACIONAL DE EMPRESAS PUNIDAS/, /\bCNEP\b/], link: 'https://portaldatransparencia.gov.br/sancoes/cnep' },
+    { id: 'CNJ', grupo: 'consulta', nome: 'CNJ — Improbidade Administrativa', longo: 'Consulta ao Cadastro Nacional de Condenações Cíveis por Ato de Improbidade (CNJ)', validade: false,
+      edital: [/CONDENACOES CIVEIS POR ATO DE IMPROBIDADE/, /CNCIAI/], link: 'https://www.cnj.jus.br/improbidade_adm/consultar_requerido.php' },
+    { id: 'ESANC', grupo: 'consulta', nome: 'e-Sanções (SP)', longo: 'Consulta ao e-Sanções', validade: false,
+      edital: [/E-?SANCOES/], link: 'https://www.bec.sp.gov.br/Sancoes_ui/aspx/ConsultaAdministrativaFornecedor.aspx' },
+    { id: 'CEEP', grupo: 'consulta', nome: 'CEEP — Empresas Punidas (SP)', longo: 'Consulta ao CEEP', validade: false,
+      edital: [/CADASTRO ESTADUAL DE EMPRESAS PUNIDAS/, /\bCEEP\b/], link: 'https://www.servicos.controladoriageral.sp.gov.br/PesquisaCEEP.aspx' },
+    { id: 'TCE', grupo: 'consulta', nome: 'Apenados do TCE-SP', longo: 'Consulta à relação de apenados do TCE-SP', validade: false,
+      edital: [/APENADOS/], link: 'https://www.tce.sp.gov.br/apenados' },
+    { id: 'CADIN', grupo: 'consulta', nome: 'CADIN Estadual (SP)', longo: 'Consulta ao CADIN Estadual', validade: false,
+      edital: [/CADIN ESTADUAL/], link: 'https://www.fazenda.sp.gov.br/cadin_estadual/pages/publ/cadin.aspx' },
   ];
   const byId = Object.fromEntries(CATALOG.map(c => [c.id, c]));
 
@@ -369,7 +386,48 @@ const Core = (() => {
     if (posRe && posRe.test(T)) return 'POSITIVA';
     return null;
   }
+  const firstDate = T => { const m = /(\d{2}\/\d{2}\/\d{4})/.exec(T); return m ? parseBR(m[1]) : null; };
+  const consulta = (nada, consta) => T => ({ emissao: firstDate(T),
+    situacao: nada.test(T) ? 'nada consta' : (consta && consta.test(T) ? 'CONSTA REGISTRO' : null) });
+  const SICAF_LINHAS = [['FED', /RECEITA FEDERAL E PGFN/], ['FGTS', /\bFGTS\b/], ['CNDT', /TRABALHISTA(?! FEDERAL)/], ['EST', /RECEITA ESTADUAL/], ['MUN', /RECEITA MUNICIPAL/]];
   const RULES = [
+    { id: 'SICAF', test: T => /SISTEMA DE CADASTRAMENTO UNIFICADO DE FORNECEDORES/.test(T) && /DECLARACAO/.test(T) && /NIVEIS CADASTRADOS|VALIDADE/.test(T) && !/RELATORIO DE/.test(T),
+      read: T => {
+        const em = /EMITIDO EM:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const sicaf = {};
+        for (const [id, re] of SICAF_LINHAS) {
+          const m = re.exec(T); if (!m) continue;
+          const v = /^[^0-9]{0,70}?(\d{2}\/\d{2}\/\d{4})/.exec(T.slice(m.index + m[0].length));
+          if (v) sicaf[id] = parseBR(v[1]);
+        }
+        const imp = /IMPEDIMENTO DE LICITAR:?\s*(NADA CONSTA|CONSTA)/.exec(T);
+        const oco = /OCORRENCIA:?\s*(NADA CONSTA|CONSTA)/.exec(T);
+        const ind = /IMPEDITIVAS INDIRETAS:?\s*(NADA CONSTA|CONSTA)/.exec(T);
+        const sit = /SITUACAO DO FORNECEDOR:?\s*([A-Z]+)/.exec(T);
+        const cad = /VENCIMENTO DO CADASTRO:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        return { emissao: em && parseBR(em[1]), sicaf, impedimento: imp && imp[1], ocorrencia: oco && oco[1], indiretas: ind && ind[1],
+          situacao: sit ? sit[1].toLowerCase() : null, vencCadastro: cad && parseBR(cad[1]) };
+      } },
+    { id: 'SICAF_REL', test: T => /SISTEMA DE CADASTRAMENTO UNIFICADO DE FORNECEDORES/.test(T) && /RELATORIO/.test(T), read: T => ({ outro: 'Relatório do SICAF', emissao: firstDate(T) }) },
+    { id: 'ESANC', test: T => /E-?SANCOES|SANCOES_UI|PESQUISA SANCOES POR FORNECEDOR/.test(T),
+      read: consulta(/NAO FORAM ENCONTRADAS SANCOES/, /SANCAO|PENALIDADE/) },
+    { id: 'CEIS', test: T => /CONSULTA DE SANCOES|PORTAL DA TRANSPARENCIA|PORTALDATRANSPARENCIA/.test(T) && /\bCEIS\b|\bCNEP\b/.test(T),
+      read: T => {
+        const r = consulta(/NENHUM REGISTRO ENCONTRADO/, /DETALHAR\s+(CEIS|CNEP)\s+\d/)(T);
+        const ceis = /CADASTRO:?\s*CEIS/.test(T), cnep = /CADASTRO:?\s*CNEP/.test(T);
+        r.tiposExtra = ceis && !cnep ? [] : (cnep && !ceis ? [] : ['CNEP']);
+        if (cnep && !ceis) r.tipoForcado = 'CNEP';
+        const dc = /DADOS DA CONSULTA:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T); if (dc) r.emissao = parseBR(dc[1]);
+        return r;
+      } },
+    { id: 'CNJ', test: T => /IMPROBIDADE ADMINISTRATIVA/.test(T) && /CADASTRO NACIONAL DE CONDENACOES/.test(T),
+      read: consulta(/NAO CONSTA/, /\bCONSTA\b/) },
+    { id: 'CEEP', test: T => /CADASTRO ESTADUAL DE EMPRESAS PUNIDAS/.test(T),
+      read: consulta(/ENCONTRADOS?\(?S?\)?:?\s*0\b/, /ENCONTRADOS?\(?S?\)?:?\s*[1-9]/) },
+    { id: 'TCE', test: T => /RELACAO DE IMPEDIMENTOS DE LICITACAO|APENADOS/.test(T),
+      read: consulta(/NAO FORAM ENCONTRADOS REGISTROS/, /IMPEDIDO|APENAD[OA] ATE/) },
+    { id: 'CADIN', test: T => /CADIN ESTADUAL/.test(T),
+      read: consulta(/NAO FORAM ENCONTRADAS PENDENCIAS/, /PENDENCIAS? ENCONTRADAS?|CONSTAM PENDENCIAS/) },
     { id: 'FED', test: T => /TRIBUTOS FEDERAIS E A DIVIDA ATIVA DA UNIAO/.test(T) || (/RECEITA FEDERAL/.test(T) && /PROCURADORIA-?\s?GERAL DA FAZENDA NACIONAL/.test(T) && /CERTIDAO/.test(T)),
       read: T => {
         const em = /EMITIDA AS .{0,20}?DO DIA (\d{2}\/\d{2}\/\d{4})/.exec(T);
@@ -462,10 +520,12 @@ const Core = (() => {
       if (rule.test(T)) {
         r.tipo = rule.id;
         Object.assign(r, rule.read(T));
+        if (r.tipoForcado) { r.tipo = r.tipoForcado; delete r.tipoForcado; }
+        if (r.tipo === 'SICAF_REL') r.tipo = null;
         break;
       }
     }
-    if (!r.tipo) {
+    if (!r.tipo && !r.outro) {
       for (const [re, label] of NAO_CERTIDAO) if (re.test(T)) { r.outro = label; break; }
     }
     r.cnpjs = [...new Set(findCnpjs(T))];
@@ -475,6 +535,33 @@ const Core = (() => {
     return r;
   }
 
+  // ---------- PDF com várias certidões: divide por página ----------
+  // pages: textos de cada página. Devolve 1 doc (PDF comum) ou vários (um por certidão).
+  function classifyPages(pages, fileName) {
+    if (!pages || pages.length < 2) return [classify((pages || []).join('\n'), fileName)];
+    const per = pages.map((t, i) => ({ i, t, c: classify(t, fileName) }));
+    const reconhecidas = per.filter(p => p.c.tipo || p.c.outro);
+    const tiposDistintos = new Set(reconhecidas.map(p => p.c.tipo || p.c.outro));
+    if (tiposDistintos.size < 2) return [classify(pages.join('\n'), fileName)];
+    const segs = [];
+    for (const p of per) {
+      const k = p.c.tipo || p.c.outro;
+      const cur = segs[segs.length - 1];
+      const temDados = p.c.cnpjs.length || p.c.validade || p.c.emissao;
+      const mesmoGrupo = k === cur?.k && (!p.c.tipo || byId[p.c.tipo]?.grupo === 'consulta');
+      const continua = cur && (!k || mesmoGrupo || (k === cur.k && !(p.c.tipo && temDados && cur.temDados)));
+      if (continua) { cur.pgs.push(p); if (temDados) cur.temDados = true; }
+      else segs.push({ k, pgs: [p], temDados: !!temDados });
+    }
+    return segs.map(sg => {
+      const a = sg.pgs[0].i + 1, b = sg.pgs[sg.pgs.length - 1].i + 1;
+      const nome = `${fileName} · ${a === b ? 'pág. ' + a : 'págs. ' + a + '–' + b}`;
+      const d = classify(sg.pgs.map(p => p.t).join('\n'), nome);
+      d.origem = fileName; d.paginas = [a, b];
+      return d;
+    });
+  }
+
   // ---------- conferência ----------
   // reqs: [{id, item}], docs: classify()[], cfg: {cnpj, ref, padraoDias}
   function avaliar(reqs, docs, cfg) {
@@ -482,9 +569,20 @@ const Core = (() => {
     const raizAlvo = alvo.slice(0, 8);
     const hoje = today();
     const linhas = [];
+    const virt = [];
+    for (const d of docs) if (d.tipo === 'SICAF') {
+      for (const [id, val] of Object.entries(d.sicaf || {})) {
+        const v = { arquivo: d.arquivo, tipo: id, viaSicaf: true, cnpjs: d.cnpjs, raiz: d.raiz, emissao: d.emissao, validade: val, situacao: 'regular', obs: [] };
+        if (d.impedimento === 'CONSTA') v.situacao = 'IMPEDIDO DE LICITAR (SICAF)';
+        if (d.indiretas === 'CONSTA') v.obs.push('SICAF aponta ocorrências impeditivas indiretas: diligenciar (item 6.3 do modelo de edital).');
+        if (d.ocorrencia === 'CONSTA') v.infoSicaf = 'O SICAF registra ocorrência não impeditiva (ver Relatório de Ocorrências).';
+        virt.push(v);
+      }
+    }
+    const pool = docs.concat(virt);
     for (const req of reqs) {
       const cat = byId[req.id];
-      const cands = docs.filter(d => d.tipo === req.id);
+      const cands = pool.filter(d => d.tipo === req.id || (d.tiposExtra || []).includes(req.id));
       const avals = cands.map(d => avaliarDoc(d, cat, alvo, raizAlvo, cfg, hoje));
       const ordem = { ok: 0, atencao: 1, vencida: 2, erro: 3 };
       avals.sort((a, b) => ordem[a.status] - ordem[b.status] || ((b.validade || 0) - (a.validade || 0)));
@@ -493,7 +591,7 @@ const Core = (() => {
         status: best ? best.status : 'faltando' });
     }
     const usados = new Set(reqs.map(r => r.id));
-    const extras = docs.filter(d => !usados.has(d.tipo));
+    const extras = docs.filter(d => !usados.has(d.tipo) && !(d.tiposExtra || []).some(t => usados.has(t)));
     const pend = linhas.filter(l => l.status === 'faltando' || l.status === 'vencida' || l.status === 'erro');
     const aten = linhas.filter(l => l.status === 'atencao');
     return { linhas, extras, pend, aten, ok: pend.length === 0 && aten.length === 0 };
@@ -515,7 +613,13 @@ const Core = (() => {
     } else if (d.cnpjs.length || d.raiz) { a.cnpjOk = 'diferente'; a.problemas.push('CNPJ não corresponde ao fornecedor.'); }
     else { a.cnpjOk = 'nao-lido'; a.avisos.push('CNPJ não localizado no documento.'); }
     // situação
-    if (d.situacao && /^(POSITIVA|IRREGULAR|CONSTA REGISTRO)$/.test(d.situacao)) a.problemas.push(`Situação: ${d.situacao.toLowerCase()}.`);
+    if (d.infoSicaf) a.infos.push(d.infoSicaf);
+    if (d.viaSicaf) a.infos.push(`Validade informada na Declaração do SICAF${d.emissao ? ' emitida em ' + fmt(d.emissao) : ''}.`);
+    if (cat.grupo === 'consulta') {
+      if (!d.situacao) a.avisos.push('Resultado da consulta não identificado: confira o documento.');
+      if (d.emissao) { const dd = diffDays(cfg.ref, d.emissao); if (dd > 30) a.avisos.push(`Consulta feita há ${dd} dias da data de referência: considere refazer.`); }
+    }
+    if (d.situacao && /^(POSITIVA|IRREGULAR|CONSTA REGISTRO|IMPEDIDO)/.test(d.situacao)) a.problemas.push(`Situação: ${d.situacao.toLowerCase()}.`);
     if (d.situacao && /^(baixada|suspensa|inapta|nula|baixado|suspenso|inapto)$/.test(d.situacao)) a.problemas.push(`Situação cadastral: ${d.situacao}.`);
     if (d.ocr) a.avisos.push('Lido por OCR (documento digitalizado): confira CNPJ e datas no arquivo.');
     if (d.generica) a.avisos.push('Modelo de outro emissor, reconhecido por padrão genérico. Confira os dados.');
@@ -542,7 +646,7 @@ const Core = (() => {
     return a;
   }
 
-  return { addDays, norm, parseEdital, classify, avaliar, CATALOG, byId, fmt, fmtCnpj, onlyCnpj, cnpjValid, parseBR, today, diffDays };
+  return { classifyPages, addDays, flat, norm, parseEdital, classify, avaliar, CATALOG, byId, fmt, fmtCnpj, onlyCnpj, cnpjValid, parseBR, today, diffDays };
 })();
 
 
@@ -595,7 +699,7 @@ function leaveExample(){
 }
 
 // ---------- PDF + OCR ----------
-const OCR_MAX_PAGES = 4;
+const OCR_MAX_PAGES = 25;
 const TESS_CDN = 'https://cdn.jsdelivr.net/npm/';
 let ocrWorkerP = null;
 async function ocrConfig(){
@@ -642,11 +746,14 @@ async function pdfText(file, progress){
   }
   const buf = new Uint8Array(await file.arrayBuffer());
   const doc = await pdfjsLib.getDocument({ data: buf, verbosity: 0 }).promise;
-  let out = '';
-  for (let p = 1; p <= doc.numPages; p++) out += pageText(await (await doc.getPage(p)).getTextContent());
-  if (out.replace(/\s/g, '').length >= 40 || !progress) return { text: out, ocr: false, paginas: doc.numPages };
-  // PDF sem camada de texto: digitalizado → OCR das primeiras páginas
+  const pages = [];
+  for (let p = 1; p <= doc.numPages; p++) pages.push(pageText(await (await doc.getPage(p)).getTextContent()));
+  const out = pages.join('\n');
+  if (out.replace(/\s/g, '').length >= 40 || !progress) return { text: out, pages, ocr: false, paginas: doc.numPages };
+  // PDF sem camada de texto: digitalizado → OCR página a página.
+  // Para se a 1ª página não for certidão (contrato social, balanço…), para não perder tempo.
   let txt = '';
+  const ocrPages = [];
   const n = Math.min(doc.numPages, OCR_MAX_PAGES);
   try {
     for (let p = 1; p <= n; p++){
@@ -658,10 +765,12 @@ async function pdfText(file, progress){
       const c = document.createElement('canvas'); c.width = Math.ceil(v.width); c.height = Math.ceil(v.height);
       const ctx = c.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height);
       await pg.render({ canvasContext: ctx, viewport: v }).promise;
-      txt += await ocrCanvas(c) + '\n';
+      const pt = await ocrCanvas(c);
+      ocrPages.push(pt); txt += pt + '\n';
+      if (p === 1 && n > 1){ const c1 = Core.classify(pt, ''); if (!c1.tipo && c1.outro) break; }
     }
-  } catch(e){ return { text: out, ocr: true, ocrErro: e.message, paginas: doc.numPages }; }
-  return { text: txt, ocr: true, paginas: doc.numPages, parcial: doc.numPages > n };
+  } catch(e){ return { text: out, pages, ocr: true, ocrErro: e.message, paginas: doc.numPages }; }
+  return { text: txt, pages: ocrPages, ocr: true, paginas: doc.numPages, parcial: doc.numPages > ocrPages.length };
 }
 
 function applyEdital(E, nome){
@@ -694,23 +803,26 @@ async function onDocs(files){
   if (!files.length){ b.textContent = 'Nenhum PDF ou imagem encontrado.'; return; }
   // edital primeiro, se estiver na pasta
   files.sort((a, b2) => (/EDITAL|PREG[AÃ]O/i.test(b2.name) ? 1 : 0) - (/EDITAL|PREG[AÃ]O/i.test(a.name) ? 1 : 0));
-  let editalNaPasta = null;
+  let editalNaPasta = null, nSplit = 0;
   for (const f of files){
     i++; b.textContent = `Lendo ${i} de ${files.length}: ${f.name}`;
-    if (S.docs.some(d => d.arquivo === f.name)) continue;
+    if (S.docs.some(d => (d.origem || d.arquivo) === f.name)) continue;
     try {
       const r = await pdfText(f, msg => { b.textContent = `Lendo ${i} de ${files.length}: ${f.name} · ${msg}…`; });
       if (!S.info.arquivo && !editalNaPasta && (r.paginas || 0) >= 8 && /EDITAL|TERMO DE REFERENCIA/i.test(Core.norm(r.text))){
         const E = Core.parseEdital(r.text);
         if (E.found.filter(x => x.exigida).length >= 3){ applyEdital(E, f.name); editalNaPasta = f.name; continue; }
       }
-      const d = Core.classify(r.text, f.name);
-      if (r.ocr){ d.ocr = true; d.semTexto = d.chars < 40; if (r.ocrErro) d.ocrErro = r.ocrErro; }
-      S.docs.push(d);
+      const parts = Core.classifyPages(r.pages && r.pages.length ? r.pages : [r.text], f.name);
+      for (const d of parts){
+        if (r.ocr){ d.ocr = true; d.semTexto = d.chars < 40; if (r.ocrErro) d.ocrErro = r.ocrErro; }
+        S.docs.push(d);
+      }
+      if (parts.length > 1) nSplit++;
     }
     catch(e){ S.docs.push({ arquivo: f.name, tipo: null, erroLeitura: true, cnpjs: [] }); }
   }
-  b.textContent = `${S.docs.length} arquivo(s) analisados.` + (editalNaPasta ? ` Edital reconhecido: ${editalNaPasta}.` : '');
+  b.textContent = `${S.docs.length} documento(s) analisados.` + (nSplit ? ` ${nSplit} PDF(s) com várias certidões foram divididos por página.` : '') + (editalNaPasta ? ` Edital reconhecido: ${editalNaPasta}.` : '');
   if (editalNaPasta){ const be = $('busyEdital'); be.hidden = false; be.textContent = `Edital lido da pasta (${editalNaPasta}). ${S.reqs.filter(f=>f.exigida).length} certidões/documentos identificados.`; }
   autoFornecedor();
   render();
@@ -768,9 +880,12 @@ function renderReqs(){
   const ul = $('reqs');
   const ids = new Set(S.reqs.map(r => r.id));
   const faltantes = Core.CATALOG.filter(c => !ids.has(c.id));
-  ul.innerHTML = S.reqs.map((r,i) => {
+  const ordem = S.reqs.map((r,i) => [r,i]).sort((a,b) => (Core.byId[a[0].id].grupo==='consulta') - (Core.byId[b[0].id].grupo==='consulta'));
+  let jaCons = false;
+  ul.innerHTML = ordem.map(([r,i]) => {
     const c = Core.byId[r.id];
-    return `<li><input type="checkbox" id="rq${i}" data-i="${i}" ${r.exigida?'checked':''} aria-label="Exigir ${esc(c.nome)}">
+    const head = (c.grupo === 'consulta' && !jaCons) ? (jaCons = true, `<li style="grid-template-columns:1fr;border-top:1px solid var(--line);padding-top:12px"><span class="tag" style="justify-self:start">Consultas de sanções · feitas pelo pregoeiro</span></li>`) : '';
+    return head + `<li><input type="checkbox" id="rq${i}" data-i="${i}" ${r.exigida?'checked':''} aria-label="Exigir ${esc(c.nome)}">
       <div><label for="rq${i}" class="nm">${esc(c.nome)}</label>
         ${r.nota ? `<div class="nt">${esc(r.nota)}</div>` : ''}
         ${r.trecho ? `<details><summary>Ver trecho do edital</summary><blockquote>${esc(r.trecho)}…</blockquote></details>` : ''}
@@ -800,6 +915,8 @@ function renderDocs(){
     if (d.emissao) meta.push('emissão ' + Core.fmt(d.emissao));
     if (d.validade) meta.push('validade ' + Core.fmt(d.validade));
     if (d.situacao) meta.push(d.situacao);
+    if (d.sicaf){ const nm = {FED:'Federal',FGTS:'FGTS',CNDT:'Trabalhista',EST:'Estadual',MUN:'Municipal'};
+      for (const [k,v] of Object.entries(d.sicaf)) meta.push(`${nm[k]} ${Core.fmt(v)}`); }
     const needVal = cat && cat.validade;
     return `<div class="doc ${d.tipo?'':'unk'}"><div class="fn">${esc(d.arquivo)} ${label}</div>
       <select data-i="${i}" class="tsel" aria-label="Tipo de ${esc(d.arquivo)}">${opts(d)}</select>
@@ -825,9 +942,13 @@ function evaluate(){
   const docs = S.docs.map(d => d.manual && d.tipo && !d.cnpjs.length ? { ...d, obs: [...(d.obs||[]), 'CNPJ não lido automaticamente: confira no documento.'] } : d);
   const R = Core.avaliar(reqs, docs, cfg);
   for (const l of R.linhas) if (S.override[l.req.id] === 'sicaf'){ l.statusAuto = l.status; l.status = 'sicaf'; }
-  R.pend = R.linhas.filter(l => ['faltando','vencida','erro'].includes(l.status));
-  R.aten = R.linhas.filter(l => l.status === 'atencao');
-  R.okc = R.linhas.filter(l => l.status === 'ok' || l.status === 'sicaf');
+  const isCons = l => l.cat.grupo === 'consulta';
+  R.docsL = R.linhas.filter(l => !isCons(l));
+  R.cons = R.linhas.filter(isCons);
+  R.pend = R.docsL.filter(l => ['faltando','vencida','erro'].includes(l.status));
+  R.aten = R.docsL.filter(l => l.status === 'atencao');
+  R.okc = R.docsL.filter(l => l.status === 'ok' || l.status === 'sicaf');
+  R.consPend = R.cons.filter(l => !(l.status === 'ok' || l.status === 'sicaf'));
   R.dispensadas = S.reqs.filter(r => r.exigida && S.override[r.id] === 'dispensa');
   R.cfg = cfg;
   return R;
@@ -835,20 +956,21 @@ function evaluate(){
 
 function renderResult(){
   const R = evaluate();
-  const n = R.linhas.length;
+  const n = R.docsL.length;
   $('sum').innerHTML = [
     [R.okc.length, 'conformes'], [R.aten.length, 'a conferir'], [R.pend.length, 'pendências'],
+    ...(R.cons.length ? [[`${R.cons.length - R.consPend.length}/${R.cons.length}`, 'consultas ok']] : []),
   ].map(([v,k]) => `<div><b>${v}</b><span>${k}</span></div>`).join('') +
     `<div><b style="font:500 15px/1.7 var(--f-mono)">${Core.fmt(R.cfg.ref)}</b><span>data de referência</span></div>`;
   const st = $('stamp');
   if (!n){ st.className = 'stamp warn'; st.innerHTML = 'Aguardando<small>envie o edital</small>'; }
   else if (R.pend.length){ st.className = 'stamp bad'; st.innerHTML = `Com pendências<small>${R.pend.length} de ${n} itens</small>`; }
-  else if (R.aten.length){ st.className = 'stamp warn'; st.innerHTML = `Conferir<small>${R.aten.length} item(ns) com ressalva</small>`; }
+  else if (R.aten.length || R.consPend.length){ st.className = 'stamp warn'; st.innerHTML = `Conferir<small>${R.aten.length ? R.aten.length + ' item(ns) com ressalva' : ''}${R.aten.length && R.consPend.length ? ' · ' : ''}${R.consPend.length ? R.consPend.length + ' consulta(s)' : ''}</small>`; }
   else { st.className = 'stamp ok'; st.innerHTML = `OK · Conforme<small>${n} de ${n} itens</small>`; }
 
   const tb = $('tbody');
-  tb.innerHTML = R.linhas.map(l => {
-    const d = l.doc, c = l.cat;
+  const linhaHtml = l => {
+    const d = l.doc, c = l.cat, cons = c.grupo === 'consulta';
     const notes = d ? [...d.problemas.map(x=>['p',x]), ...d.avisos.map(x=>['a',x]), ...d.infos.map(x=>['i',x])] : [];
     if (l.status === 'sicaf') notes.unshift(['i', 'Regularidade confirmada manualmente no SICAF ou no site do emissor.']);
     if (d && l.outros.length) notes.push(['i', `Outro(s) arquivo(s) do mesmo tipo: ${l.outros.map(o=>o.arquivo).join(', ')}.`]);
@@ -857,18 +979,21 @@ function renderResult(){
     const val = !d ? '—' : (d.validade ? Core.fmt(d.validade) + (d.presumida ? '*' : '') : (c.validade ? '?' : 'não se aplica'));
     const ov = S.override[l.req.id] || 'auto';
     return `<tr class="st-${l.status}">
-      <td><span class="pill s-${l.status}">${ST[l.status]}</span></td>
+      <td><span class="pill s-${l.status}">${cons && l.status === 'faltando' ? 'Não consultada' : cons && l.status === 'sicaf' ? 'Consultada' : ST[l.status]}</span></td>
       <td><div class="cert">${esc(c.nome)}</div>
-        <div class="file">${l.req.item ? 'Item ' + esc(l.req.item) + ' · ' : ''}${d ? esc(d.arquivo) : 'Nenhum arquivo deste tipo foi enviado'}${c.link ? ` · <a href="${c.link}" target="_blank" rel="noopener">verificar no emissor</a>` : ''}</div>
+        <div class="file">${l.req.item ? 'Item ' + esc(l.req.item) + ' · ' : ''}${d ? esc(d.arquivo) + (d.situacao && cons ? ' · ' + esc(d.situacao) : '') : (cons ? 'Nenhuma consulta encontrada nos arquivos' : 'Nenhum arquivo deste tipo foi enviado')}${c.link ? ` · <a href="${c.link}" target="_blank" rel="noopener">${cons ? 'consultar' : 'verificar no emissor'}</a>` : ''}</div>
         ${notes.length ? `<ul>${notes.map(([k,t]) => `<li class="${k}">${esc(t)}</li>`).join('')}</ul>` : ''}</td>
       <td class="mono">${cnpjTxt}${esc(cnpjMark)}</td>
       <td class="mono">${d && d.emissao ? Core.fmt(d.emissao) : '—'}</td>
       <td class="mono">${val}</td>
       <td><select data-id="${l.req.id}" class="ovr" aria-label="Ajuste manual para ${esc(c.nome)}">
         <option value="auto" ${ov==='auto'?'selected':''}>Automático</option>
-        <option value="sicaf" ${ov==='sicaf'?'selected':''}>Conferida no SICAF / site</option>
+        <option value="sicaf" ${ov==='sicaf'?'selected':''}>${cons ? 'Consultada no site: nada consta' : 'Conferida no SICAF / site'}</option>
         <option value="dispensa" ${ov==='dispensa'?'selected':''}>Não exigir</option></select></td></tr>`;
-  }).join('') || `<tr><td colspan="6" class="none">Envie o edital ou inclua as certidões exigidas na etapa 1.</td></tr>`;
+  };
+  tb.innerHTML = (R.docsL.map(linhaHtml).join('') +
+    (R.cons.length ? `<tr class="grp"><td colspan="6">Consultas de sanções e impedimentos (art. 14 da Lei nº 14.133/2021) · feitas pelo pregoeiro, não entram na mensagem à empresa</td></tr>` + R.cons.map(linhaHtml).join('') : ''))
+    || `<tr><td colspan="6" class="none">Envie o edital ou inclua as certidões exigidas na etapa 1.</td></tr>`;
   tb.querySelectorAll('.ovr').forEach(s => s.onchange = () => { S.override[s.dataset.id] = s.value; renderResult(); });
 
   const ex = [];
@@ -889,7 +1014,7 @@ function renderMsg(R){
   const cnpj = Core.onlyCnpj($('cnpj').value) ? Core.fmtCnpj($('cnpj').value) : '[CNPJ]';
   const I = S.info;
   if (!R.pend.length){
-    $('msgSub').textContent = R.linhas.length ? 'Não há pendências: nenhuma mensagem é necessária.' + (R.aten.length ? ' Há itens com ressalva para conferir na tabela.' : '') : 'A mensagem será gerada depois da conferência.';
+    $('msgSub').textContent = R.docsL.length ? 'Não há pendências: nenhuma mensagem é necessária.' + (R.aten.length ? ' Há itens com ressalva para conferir na tabela.' : '') : 'A mensagem será gerada depois da conferência.';
     $('msg').value = ''; return;
   }
   $('msgSub').textContent = `Texto gerado com ${R.pend.length} pendência(s). Revise antes de enviar.`;
