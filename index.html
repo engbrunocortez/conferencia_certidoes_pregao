@@ -45,6 +45,13 @@ section.card{background:var(--panel);border:1px solid var(--line);border-radius:
 .drop small{color:var(--muted)}
 .drop input{position:absolute;width:1px;height:1px;opacity:0}
 .busy{font-size:13px;color:var(--accent);margin-top:8px}
+.sites{margin:-8px 0 18px;font-size:13.5px}
+.sites summary{cursor:pointer;color:var(--accent);font-weight:600;display:inline-block;padding:4px 0}
+.sites-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:4px 24px;margin-top:8px;padding:12px 14px;background:var(--panel);border:1px solid var(--line);border-radius:6px}
+.sites-grid h3{grid-column:1/-1;font:600 11px var(--f-body);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 2px}
+.sites-grid a{color:var(--accent);text-decoration:none;padding:3px 0;overflow-wrap:anywhere}
+.sites-grid a:hover{text-decoration:underline}
+.ask{background:var(--accent-soft);color:var(--ink);border-radius:4px;padding:10px 12px}
 label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
 input[type=text],input[type=date],input[type=number],select,textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:7px 9px;width:100%;text-transform:none;letter-spacing:0;font-weight:400}
 input.mono{font-family:var(--f-mono)}
@@ -126,6 +133,10 @@ footer{margin-top:28px;font-size:12px;color:var(--muted);max-width:75ch}
     </div>
     <div class="proc" id="proc"></div>
   </header>
+  <details class="sites" id="sites">
+    <summary>Sites de consulta e emissão</summary>
+    <div class="sites-grid" id="sitesGrid"></div>
+  </details>
 
   <div class="grid">
     <div class="col">
@@ -171,8 +182,8 @@ footer{margin-top:28px;font-size:12px;color:var(--muted);max-width:75ch}
         </label>
         <div class="btns" style="margin-top:8px"><label class="b ghost" for="fileDir" style="display:inline-block">Selecionar pasta inteira</label>
           <input type="file" id="fileDir" webkitdirectory multiple hidden>
-          <button type="button" class="b ghost" id="clearDocs">Limpar documentos</button></div>
-        <p class="hint">A pasta pode conter o edital: ele é reconhecido e usado na etapa 1. Não há limite de arquivos; PDFs digitalizados levam alguns segundos por página.</p>
+          <button type="button" class="b" id="nextCompany">Conferir outra empresa</button></div>
+        <p class="hint">A pasta pode conter o edital: ele é reconhecido e usado na etapa 1. Para várias empresas do mesmo edital, use “Conferir outra empresa”: o edital continua carregado, inclusive se você fechar a página. Se aparecer um edital diferente, o sistema pergunta qual usar. Não há limite de arquivos; PDFs digitalizados levam alguns segundos por página.</p>
         <div class="busy" id="busyDocs" hidden></div>
         <div class="docs" id="docs" style="margin-top:12px"></div>
       </section>
@@ -297,13 +308,13 @@ const Core = (() => {
   const CATALOG = [
     { id: 'FED', nome: 'CND Federal (RFB/PGFN)', longo: 'Certidão de Débitos Relativos a Créditos Tributários Federais e à Dívida Ativa da União (RFB/PGFN)', escopo: 'raiz', validade: true,
       edital: [/REGULARIDADE FISCAL PERANTE A FAZENDA NACIONAL/, /TRIBUTOS FEDERAIS E A DIVIDA ATIVA DA UNIAO/, /RECEITA FEDERAL DO BRASIL \(RFB\) E\s+PELA PROCURADORIA/, /REGULARIDADE (?:COM|PERANTE) A FAZENDA (?:FEDERAL|NACIONAL)/],
-      link: 'https://solucoes.receita.fazenda.gov.br/Servicos/certidaointernet/PJ/Consultar' },
+      link: 'https://servicos.receitafederal.gov.br/servico/certidoes/#/home' },
     { id: 'FGTS', nome: 'CRF — FGTS (Caixa)', longo: 'Certificado de Regularidade do FGTS (CRF)', escopo: 'estab', validade: true,
       edital: [/REGULARIDADE (?:COM|PERANTE|RELATIVA AO|JUNTO AO) O? ?FUNDO DE GARANTIA/, /CERTIFICADO DE REGULARIDADE DO FGTS/, /REGULARIDADE (?:COM|PERANTE) O FGTS/],
       link: 'https://consulta-crf.caixa.gov.br/consultacrf/pages/consultaEmpregador.jsf' },
     { id: 'CNDT', nome: 'CNDT — Justiça do Trabalho', longo: 'Certidão Negativa de Débitos Trabalhistas (CNDT)', escopo: 'raiz', validade: true,
       edital: [/INEXISTENCIA DE DEBITOS INADIMPLIDOS PERANTE A JUSTICA DO TRABALHO/, /CERTIDAO NEGATIVA DE DEBITOS TRABALHISTAS/, /\bCNDT\b/],
-      link: 'https://cndt-certidao.tst.jus.br/inicio.faces' },
+      link: 'https://cndt-certidao.tst.jus.br/' },
     { id: 'EST', nome: 'Fazenda Estadual — Dívida Ativa', longo: 'Certidão de regularidade com a Fazenda Estadual (débitos inscritos na Dívida Ativa)', escopo: 'raiz', validade: true,
       edital: [/REGULARIDADE (?:COM|PERANTE|JUNTO A) A FAZENDA ESTADUAL/, /DEBITOS TRIBUTARIOS\s+INSCRITOS NA DIVIDA ATIVA/, /FAZENDA ESTADUAL/],
       link: 'https://www.dividaativa.pge.sp.gov.br/sc/pages/crda/emitirCrda.jsf' },
@@ -323,20 +334,23 @@ const Core = (() => {
       edital: [/INSCRICAO NO CADASTRO NACIONAL (?:DE|DA) PESSOAS? JURIDICAS?/] },
     { id: 'INSC', nome: 'Inscrição estadual ou municipal', longo: 'Prova de inscrição no cadastro de contribuintes estadual e/ou municipal', escopo: 'estab', validade: false,
       edital: [/INSCRICAO NO CADASTRO DE CONTRIBUINTES/] },
-    { id: 'SICAF', grupo: 'sicaf', nome: 'Declaração do SICAF', longo: 'Declaração de situação do fornecedor no SICAF', validade: false, edital: [] },
+    { id: 'CONSOL', grupo: 'fonte', nome: 'Consulta Consolidada (TCU)', longo: 'Consulta Consolidada de Pessoa Jurídica (TCU)', validade: false, edital: [], link: 'https://certidoes-apf.apps.tcu.gov.br/' },
+    { id: 'SICAF', grupo: 'sicaf', nome: 'Declaração do SICAF', longo: 'Declaração de situação do fornecedor no SICAF', validade: false, edital: [], link: 'https://compras.sp.gov.br/' },
     // ---- consultas de sanções (feitas pelo pregoeiro; não entram na mensagem à empresa) ----
     { id: 'CEIS', grupo: 'consulta', nome: 'CEIS — Inidôneas e Suspensas (CGU)', longo: 'Consulta ao CEIS', validade: false,
-      edital: [/EMPRESAS INIDONEAS E SUSPENSAS/, /\bCEIS\b/], link: 'https://portaldatransparencia.gov.br/sancoes/ceis' },
+      edital: [/EMPRESAS INIDONEAS E SUSPENSAS/, /\bCEIS\b/], link: 'https://portaldatransparencia.gov.br/sancoes/consulta?cadastro=1&ordenarPor=nomeSancionado&direcao=asc' },
     { id: 'CNEP', grupo: 'consulta', nome: 'CNEP — Empresas Punidas (CGU)', longo: 'Consulta ao CNEP', validade: false,
       edital: [/CADASTRO NACIONAL DE EMPRESAS PUNIDAS/, /\bCNEP\b/], link: 'https://portaldatransparencia.gov.br/sancoes/cnep' },
     { id: 'CNJ', grupo: 'consulta', nome: 'CNJ — Improbidade Administrativa', longo: 'Consulta ao Cadastro Nacional de Condenações Cíveis por Ato de Improbidade (CNJ)', validade: false,
-      edital: [/CONDENACOES CIVEIS POR ATO DE IMPROBIDADE/, /CNCIAI/], link: 'https://www.cnj.jus.br/improbidade_adm/consultar_requerido.php' },
+      edital: [/CONDENACOES CIVEIS POR ATO DE IMPROBIDADE/, /CNCIAI/], link: 'https://www.cnj.jus.br/improbidade_adm/consultar_requerido.php?validar=form' },
     { id: 'ESANC', grupo: 'consulta', nome: 'e-Sanções (SP)', longo: 'Consulta ao e-Sanções', validade: false,
       edital: [/E-?SANCOES/], link: 'https://www.bec.sp.gov.br/Sancoes_ui/aspx/ConsultaAdministrativaFornecedor.aspx' },
     { id: 'CEEP', grupo: 'consulta', nome: 'CEEP — Empresas Punidas (SP)', longo: 'Consulta ao CEEP', validade: false,
-      edital: [/CADASTRO ESTADUAL DE EMPRESAS PUNIDAS/, /\bCEEP\b/], link: 'https://www.servicos.controladoriageral.sp.gov.br/PesquisaCEEP.aspx' },
+      edital: [/CADASTRO ESTADUAL DE EMPRESAS PUNIDAS/, /\bCEEP\b/], link: 'http://www.servicos.controladoriageral.sp.gov.br/PesquisaCEEP.aspx' },
     { id: 'TCE', grupo: 'consulta', nome: 'Apenados do TCE-SP', longo: 'Consulta à relação de apenados do TCE-SP', validade: false,
-      edital: [/APENADOS/], link: 'https://www.tce.sp.gov.br/apenados' },
+      edital: [/APENADOS/], link: 'https://www.tce.sp.gov.br/pesquisa-relacao-apenados' },
+    { id: 'TCU', grupo: 'consulta', nome: 'TCU — Licitantes Inidôneos', longo: 'Certidão Negativa de Licitantes Inidôneos (TCU)', validade: false,
+      edital: [/INIDONEOS\s.{0,60}TRIBUNAL DE CONTAS DA UNIAO|TRIBUNAL DE CONTAS DA UNIAO.{0,80}INIDONE/, /LICITANTES INIDONEOS/], link: 'https://certidoes.apps.tcu.gov.br/' },
     { id: 'CADIN', grupo: 'consulta', nome: 'CADIN Estadual (SP)', longo: 'Consulta ao CADIN Estadual', validade: false,
       edital: [/CADIN ESTADUAL/], link: 'https://www.fazenda.sp.gov.br/cadin_estadual/pages/publ/cadin.aspx' },
   ];
@@ -409,6 +423,24 @@ const Core = (() => {
           situacao: sit ? sit[1].toLowerCase() : null, vencCadastro: cad && parseBR(cad[1]) };
       } },
     { id: 'SICAF_REL', test: T => /SISTEMA DE CADASTRAMENTO UNIFICADO DE FORNECEDORES/.test(T) && /RELATORIO/.test(T), read: T => ({ outro: 'Relatório do SICAF', emissao: firstDate(T) }) },
+    { id: 'TCU', test: T => /LICITANTES INIDONEOS/.test(T) && /TRIBUNAL DE CONTAS DA UNIAO/.test(T) && !/CONSULTA CONSOLIDADA/.test(T),
+      read: T => { const va = /VALIDA ATE:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        return { emissao: firstDate(T), validade: va && parseBR(va[1]), situacao: /NAO CONSTA/.test(T) ? 'nada consta' : (/\bCONSTA\b/.test(T) ? 'CONSTA REGISTRO' : null) }; } },
+    { id: 'CEIS', test: T => /CERTIDAO NEGATIVA CORRECIONAL/.test(T),
+      read: T => ({ emissao: firstDate(T), tiposExtra: ['CNEP'],
+        situacao: /NAO CONSTA|NADA CONSTA|NAO (?:FORAM ENCONTRAD|EXISTE)/.test(T) && !/CONSTAM REGISTROS|FORAM ENCONTRADOS REGISTROS/.test(T) ? 'nada consta' : null }) },
+    { id: 'CONSOL', test: T => /CONSULTA CONSOLIDADA DE PESSOA JURIDICA/.test(T),
+      read: T => {
+        const em = /CONSULTA REALIZADA EM:?\s*(\d{2}\/\d{2}\/\d{4})/.exec(T);
+        const consol = {};
+        for (const bl of T.split(/ORGAO GESTOR:/).slice(1)) {
+          const r = /RESULTADO DA CONSULTA:?\s*(.{3,80}?)\s*(?:PARA ACESSAR|OBS:|$)/.exec(bl);
+          const res = r ? r[1].trim() : '';
+          const id = /LICITANTES INIDONEOS/.test(bl) ? 'TCU' : /CNIA|IMPROBIDADE/.test(bl) ? 'CNJ' : /INIDONEAS E SUSPENSAS|\bCEIS\b/.test(bl) ? 'CEIS' : /\bCNEP\b|EMPRESAS PUNIDAS/.test(bl) ? 'CNEP' : null;
+          if (id) consol[id] = /^NADA CONSTA/.test(res) ? 'nada consta' : /INDISPONIVEL|ERRO|NAO FOI POSSIVEL/.test(res) ? 'indisponivel' : (res ? 'CONSTA REGISTRO' : null);
+        }
+        return { emissao: em ? parseBR(em[1]) : firstDate(T), consol };
+      } },
     { id: 'ESANC', test: T => /E-?SANCOES|SANCOES_UI|PESQUISA SANCOES POR FORNECEDOR/.test(T),
       read: consulta(/NAO FORAM ENCONTRADAS SANCOES/, /SANCAO|PENALIDADE/) },
     { id: 'CEIS', test: T => /CONSULTA DE SANCOES|PORTAL DA TRANSPARENCIA|PORTALDATRANSPARENCIA/.test(T) && /\bCEIS\b|\bCNEP\b/.test(T),
@@ -540,8 +572,7 @@ const Core = (() => {
   function classifyPages(pages, fileName) {
     if (!pages || pages.length < 2) return [classify((pages || []).join('\n'), fileName)];
     const per = pages.map((t, i) => ({ i, t, c: classify(t, fileName) }));
-    const reconhecidas = per.filter(p => p.c.tipo || p.c.outro);
-    const tiposDistintos = new Set(reconhecidas.map(p => p.c.tipo || p.c.outro));
+    const tiposDistintos = new Set(per.filter(p => p.c.tipo).map(p => p.c.tipo));
     if (tiposDistintos.size < 2) return [classify(pages.join('\n'), fileName)];
     const segs = [];
     for (const p of per) {
@@ -576,6 +607,14 @@ const Core = (() => {
         if (d.impedimento === 'CONSTA') v.situacao = 'IMPEDIDO DE LICITAR (SICAF)';
         if (d.indiretas === 'CONSTA') v.obs.push('SICAF aponta ocorrências impeditivas indiretas: diligenciar (item 6.3 do modelo de edital).');
         if (d.ocorrencia === 'CONSTA') v.infoSicaf = 'O SICAF registra ocorrência não impeditiva (ver Relatório de Ocorrências).';
+        virt.push(v);
+      }
+    }
+    for (const d of docs) if (d.tipo === 'CONSOL') {
+      for (const [id, res] of Object.entries(d.consol || {})) {
+        const v = { arquivo: d.arquivo, tipo: id, cnpjs: d.cnpjs, raiz: d.raiz, emissao: d.emissao, validade: null, obs: [], viaConsol: true,
+          situacao: res === 'indisponivel' ? null : res };
+        if (res === 'indisponivel') v.obs.push('Na Consulta Consolidada este cadastro estava indisponível: refaça a consulta no site do órgão.');
         virt.push(v);
       }
     }
@@ -614,9 +653,10 @@ const Core = (() => {
     else { a.cnpjOk = 'nao-lido'; a.avisos.push('CNPJ não localizado no documento.'); }
     // situação
     if (d.infoSicaf) a.infos.push(d.infoSicaf);
+    if (d.viaConsol) a.infos.push('Resultado lido da Consulta Consolidada de Pessoa Jurídica (TCU).');
     if (d.viaSicaf) a.infos.push(`Validade informada na Declaração do SICAF${d.emissao ? ' emitida em ' + fmt(d.emissao) : ''}.`);
     if (cat.grupo === 'consulta') {
-      if (!d.situacao) a.avisos.push('Resultado da consulta não identificado: confira o documento.');
+      if (!d.situacao && !d.viaConsol) a.avisos.push('Resultado da consulta não identificado: confira o documento.');
       if (d.emissao) { const dd = diffDays(cfg.ref, d.emissao); if (dd > 30) a.avisos.push(`Consulta feita há ${dd} dias da data de referência: considere refazer.`); }
     }
     if (d.situacao && /^(POSITIVA|IRREGULAR|CONSTA REGISTRO|IMPEDIDO)/.test(d.situacao)) a.problemas.push(`Situação: ${d.situacao.toLowerCase()}.`);
@@ -624,7 +664,7 @@ const Core = (() => {
     if (d.ocr) a.avisos.push('Lido por OCR (documento digitalizado): confira CNPJ e datas no arquivo.');
     if (d.generica) a.avisos.push('Modelo de outro emissor, reconhecido por padrão genérico. Confira os dados.');
     // validade
-    if (cat.validade) {
+    if (cat.validade || (cat.grupo === 'consulta' && d.validade)) {
       let val = d.validade;
       if (!val && (d.presumida || cat.presumida) && d.emissao) { val = addDays(d.emissao, cfg.padraoDias); a.presumida = true; a.infos.push(`Sem prazo impresso: validade presumida de ${cfg.padraoDias} dias a partir da emissão.`); }
       a.validade = val;
@@ -779,6 +819,40 @@ function applyEdital(E, nome){
   S.reqs = E.found; S.override = {};
   if (S.info.prazo) $('prazo').value = S.info.prazo;
   S.refMode = S.info.sessao ? 'sessao' : 'hoje';
+  saveEdital();
+}
+const nomeEdital = (info, arq) => info && info.pregao ? `Pregão ${info.pregao}` : (arq || info?.arquivo || 'edital');
+function perguntar(html, botoes){
+  const be = $('busyEdital'); be.hidden = false;
+  be.innerHTML = `<div class="ask"><div>${html}</div><div class="btns" style="margin-top:6px">${botoes.map((b,i)=>`<button type="button" class="b${i?' ghost':''}" data-k="${i}">${esc(b[0])}</button>`).join('')}</div></div>`;
+  be.querySelectorAll('button[data-k]').forEach(bt => bt.onclick = () => botoes[+bt.dataset.k][1]());
+  be.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+function perguntarEdital(p){
+  const atual = nomeEdital(S.info), novo = nomeEdital(p.E.info, p.nome);
+  perguntar(`A pasta traz o edital do <b>${esc(novo)}</b>, diferente do carregado. Continuar com o <b>${esc(atual)}</b>?`, [
+    [`Continuar com o ${atual}`, () => { $('busyEdital').textContent = `Conferência mantida com o ${atual}. O arquivo ${p.nome} foi ignorado.`; S.docs.push({ arquivo: p.nome, tipo: null, outro: 'Edital de outro pregão (ignorado)', cnpjs: [] }); render(); }],
+    [`Usar o ${novo}`, () => { applyEdital(p.E, p.nome); $('busyEdital').textContent = `Agora a conferência usa o ${novo} (${p.nome}).`; render(); }],
+  ]);
+}
+function saveEdital(){
+  if (S.exemplo || !S.info.arquivo) return;
+  LS.set('cc_edital', JSON.stringify({ info: { ...S.info, sessao: S.info.sessao ? S.info.sessao.toISOString() : null }, reqs: S.reqs, prazo: $('prazo').value }));
+}
+function restoreEdital(){
+  try {
+    const j = JSON.parse(LS.get('cc_edital') || 'null'); if (!j || !j.info || !j.reqs) return false;
+    S.exemplo = false; S.docs = []; S.override = {};
+    S.info = { ...j.info, sessao: j.info.sessao ? new Date(j.info.sessao) : null };
+    S.reqs = j.reqs; if (j.prazo) $('prazo').value = j.prazo;
+    S.refMode = S.info.sessao ? 'sessao' : 'hoje';
+    $('razao').value = ''; $('cnpj').value = '';
+    setTimeout(() => perguntar(`Continuar com o edital do <b>${esc(nomeEdital(S.info))}</b>${S.info.processo ? ` (Processo ${esc(S.info.processo)})` : ''}?`, [
+      ['Continuar', () => { $('busyEdital').innerHTML = `Edital: <b>${esc(nomeEdital(S.info))}</b> · ${esc(S.info.arquivo)} <button type="button" class="b ghost" id="forgetEdital" style="padding:2px 8px">Trocar edital</button>`; }],
+      ['Trocar edital', () => { LS.set('cc_edital', ''); S.info = {}; S.reqs = []; S.override = {}; $('busyEdital').textContent = 'Envie o novo edital ou uma pasta que o contenha.'; render(); }],
+    ]), 0);
+    return true;
+  } catch(e){ return false; }
 }
 async function onEdital(file){
   if (!file) return;
@@ -803,17 +877,29 @@ async function onDocs(files){
   if (!files.length){ b.textContent = 'Nenhum PDF ou imagem encontrado.'; return; }
   // edital primeiro, se estiver na pasta
   files.sort((a, b2) => (/EDITAL|PREG[AÃ]O/i.test(b2.name) ? 1 : 0) - (/EDITAL|PREG[AÃ]O/i.test(a.name) ? 1 : 0));
-  let editalNaPasta = null, nSplit = 0;
+  let editalNaPasta = null, nSplit = 0, editalPendente = null;
   for (const f of files){
     i++; b.textContent = `Lendo ${i} de ${files.length}: ${f.name}`;
     if (S.docs.some(d => (d.origem || d.arquivo) === f.name)) continue;
     try {
       const r = await pdfText(f, msg => { b.textContent = `Lendo ${i} de ${files.length}: ${f.name} · ${msg}…`; });
-      if (!S.info.arquivo && !editalNaPasta && (r.paginas || 0) >= 8 && /EDITAL|TERMO DE REFERENCIA/i.test(Core.norm(r.text))){
-        const E = Core.parseEdital(r.text);
-        if (E.found.filter(x => x.exigida).length >= 3){ applyEdital(E, f.name); editalNaPasta = f.name; continue; }
-      }
       const parts = Core.classifyPages(r.pages && r.pages.length ? r.pages : [r.text], f.name);
+      const nt = Core.norm(r.text);
+      const pg1 = Core.classify((r.pages && r.pages[0]) || '', '');
+      const pareceEdital = (r.paginas || 0) >= 8 && !pg1.tipo
+        && /EDITAL|TERMO DE REFERENCIA|INSTRUMENTO CONVOCATORIO/.test(nt) && /HABILITACAO/.test(nt)
+        && /PREGAO|CONCORRENCIA|DISPENSA|LICITACAO/.test(nt);
+      if (pareceEdital){
+        const E = Core.parseEdital(r.text);
+        if (E.found.filter(x => x.exigida).length >= 3){
+          const id = x => [x.pregao, x.processo].filter(Boolean).join('|');
+          const outro = S.info.arquivo && id(E.info) && id(S.info) && id(E.info) !== id(S.info);
+          if (!S.info.arquivo && !editalNaPasta){ applyEdital(E, f.name); editalNaPasta = f.name; }
+          else if (outro && !editalPendente){ editalPendente = { E, nome: f.name }; }
+          else S.docs.push({ arquivo: f.name, tipo: null, outro: 'Edital (mesmo já carregado)', cnpjs: [] });
+          continue;
+        }
+      }
       for (const d of parts){
         if (r.ocr){ d.ocr = true; d.semTexto = d.chars < 40; if (r.ocrErro) d.ocrErro = r.ocrErro; }
         S.docs.push(d);
@@ -823,7 +909,9 @@ async function onDocs(files){
     catch(e){ S.docs.push({ arquivo: f.name, tipo: null, erroLeitura: true, cnpjs: [] }); }
   }
   b.textContent = `${S.docs.length} documento(s) analisados.` + (nSplit ? ` ${nSplit} PDF(s) com várias certidões foram divididos por página.` : '') + (editalNaPasta ? ` Edital reconhecido: ${editalNaPasta}.` : '');
-  if (editalNaPasta){ const be = $('busyEdital'); be.hidden = false; be.textContent = `Edital lido da pasta (${editalNaPasta}). ${S.reqs.filter(f=>f.exigida).length} certidões/documentos identificados.`; }
+  if (editalNaPasta){ const be = $('busyEdital'); be.hidden = false;
+    be.innerHTML = `Edital lido da pasta (${esc(editalNaPasta)}). ${S.reqs.filter(f=>f.exigida).length} certidões/documentos identificados.`; }
+  if (editalPendente) perguntarEdital(editalPendente);
   autoFornecedor();
   render();
 }
@@ -891,8 +979,8 @@ function renderReqs(){
         ${r.trecho ? `<details><summary>Ver trecho do edital</summary><blockquote>${esc(r.trecho)}…</blockquote></details>` : ''}
       </div><span class="item">${r.item ? 'item ' + esc(r.item) : (r.manual ? 'incluída' : '')}</span></li>`;
   }).join('') + (faltantes.length ? `<li style="grid-template-columns:1fr"><select id="addReq" aria-label="Incluir certidão"><option value="">+ Incluir outra certidão…</option>${faltantes.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('')}</select></li>` : '');
-  ul.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => { S.reqs[+cb.dataset.i].exigida = cb.checked; renderResult(); });
-  const add = $('addReq'); if (add) add.onchange = () => { if (add.value){ S.reqs.push({ id: add.value, exigida: true, manual: true }); render(); } };
+  ul.querySelectorAll('input[type=checkbox]').forEach(cb => cb.onchange = () => { S.reqs[+cb.dataset.i].exigida = cb.checked; saveEdital(); renderResult(); });
+  const add = $('addReq'); if (add) add.onchange = () => { if (add.value){ S.reqs.push({ id: add.value, exigida: true, manual: true }); saveEdital(); render(); } };
 }
 
 function renderDocs(){
@@ -915,6 +1003,8 @@ function renderDocs(){
     if (d.emissao) meta.push('emissão ' + Core.fmt(d.emissao));
     if (d.validade) meta.push('validade ' + Core.fmt(d.validade));
     if (d.situacao) meta.push(d.situacao);
+    if (d.consol){ const nm = {TCU:'TCU',CNJ:'CNJ',CEIS:'CEIS',CNEP:'CNEP'};
+      for (const [k,v] of Object.entries(d.consol)) meta.push(`${nm[k]}: ${v || '?'}`); }
     if (d.sicaf){ const nm = {FED:'Federal',FGTS:'FGTS',CNDT:'Trabalhista',EST:'Estadual',MUN:'Municipal'};
       for (const [k,v] of Object.entries(d.sicaf)) meta.push(`${nm[k]} ${Core.fmt(v)}`); }
     const needVal = cat && cat.validade;
@@ -1078,7 +1168,17 @@ function wireDrop(zoneId, inputId, handler, multi){
 wireDrop('dropEdital', 'fileEdital', onEdital, false);
 wireDrop('dropDocs', 'fileDocs', onDocs, true);
 $('fileDir').onchange = () => { onDocs([...$('fileDir').files]); $('fileDir').value = ''; };
-$('clearDocs').onclick = () => { leaveExample(); S.docs = []; $('busyDocs').hidden = true; render(); };
+$('nextCompany').onclick = () => {
+  leaveExample();
+  S.docs = []; S.override = {};
+  $('razao').value = ''; $('cnpj').value = '';
+  const b = $('busyDocs'); b.hidden = false;
+  b.textContent = S.info.arquivo ? `Pronto para a próxima empresa, ainda com o edital do ${nomeEdital(S.info)}. Se a pasta trouxer outro edital, o sistema pergunta qual usar.` : 'Documentos removidos.';
+  render();
+  $('dropDocs').scrollIntoView({ behavior: 'smooth', block: 'center' });
+};
+document.addEventListener('click', e => { if (e.target && e.target.id === 'forgetEdital'){
+  LS.set('cc_edital', ''); S.info = {}; S.reqs = []; S.override = {}; $('busyEdital').hidden = true; render(); $('fileEdital').click(); } });
 document.querySelectorAll('.seg button').forEach(bt => bt.onclick = () => {
   S.refMode = bt.dataset.ref;
   if (S.refMode === 'custom' && !S.refCustom){ S.refCustom = Core.today(); $('refCustom').value = toISO(S.refCustom); }
@@ -1095,7 +1195,18 @@ $('copy').onclick = () => {
 };
 const sv = LS.get('cc_assin'); if (sv) $('assin').value = sv;
 
-loadExample();
+(function sites(){
+  const grupos = [
+    ['Certidões', ['FED','FGTS','CNDT','EST','FAL']],
+    ['Consultas de sanções', ['CEIS','CNEP','CNJ','ESANC','CEEP','TCE','TCU','CADIN']],
+    ['Cadastros', ['SICAF','CONSOL']],
+  ];
+  $('sitesGrid').innerHTML = grupos.map(([g, ids]) => `<h3>${g}</h3>` + ids.map(id => Core.byId[id]).filter(c => c && c.link)
+    .map(c => `<a href="${c.link}" target="_blank" rel="noopener">${esc(c.nome)}</a>`).join('')).join('');
+  try { if (LS.get('cc_sites') === '1') $('sites').open = true; } catch(e){}
+  $('sites').addEventListener('toggle', () => LS.set('cc_sites', $('sites').open ? '1' : '0'));
+})();
+if (!restoreEdital()) loadExample();
 render();
 })();
 </script>
